@@ -12,10 +12,6 @@ const ExcelJS = require('exceljs');
 const app = express();
 
   const fs = require('fs'); // Standard fs for createReadStream
-  const fsPromises = require('fs').promises; // fs.promises for async file operations
-    const processedCsvDir = path.join(__dirname, 'processed_csv');
-  fsPromises.mkdir(processedCsvDir, { recursive: true }).catch(err => console.error('Error creating processed_csv dir:', err));
-
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
@@ -894,147 +890,8 @@ app.get('/admin/download-attendance', async (req, res) => {
   }
 });
 
-  app.post('/admin/upload-sheet', async (req, res) => {
-    try {
-      if (!req.files || !req.files.csvFile) {
-        return res.status(400).json({ error: 'No CSV file uploaded' });
-      }
-      const csvFile = req.files.csvFile;
-      const students = [];
-      const results = [];
-      const rollNumberRegex = /^5[0-9]{2}[0-9]{6}$/;
-      const validYears = [1, 2, 3, 4];
-      const validSections = ['A', 'B', 'C'];
-
-      // Parse CSV
-      await new Promise((resolve, reject) => {
-        fs.createReadStream(csvFile.tempFilePath)
-          .pipe(csv({ columns: true, skip_empty_lines: true }))
-          .on('data', (row) => {
-            const rollNumber = row.rollNumber?.trim();
-            const name = row.name?.trim();
-            const year = parseInt(row.year);
-            const section = row.section?.trim();
-
-            // Validate row
-            let error = null;
-            if (!rollNumber || !rollNumberRegex.test(rollNumber)) {
-              error = `Invalid rollNumber format: ${rollNumber || 'missing'}`;
-            } else if (!name) {
-              error = 'Missing name';
-            } else if (!validYears.includes(year)) {
-              error = `Invalid year: ${year || 'missing'}`;
-            } else if (!validSections.includes(section)) {
-              error = `Invalid section: ${section || 'missing'}`;
-            }
-
-            if (error) {
-              results.push({ rollNumber, name, year, section, status: 'Failed', error });
-              return;
-            }
-
-            students.push({ rollNumber, name, year, section });
-            results.push({ rollNumber, name, year, section, status: 'Success', error: '' });
-          })
-          .on('end', resolve)
-          .on('error', reject);
-      });
-
-      if (students.length === 0) {
-        return res.status(400).json({ error: 'No valid student data in CSV' });
-      }
-
-      // Insert valid students
-      try {
-        await Student.insertMany(students, { ordered: false });
-      } catch (err) {
-        // Handle duplicate rollNumbers
-        results.forEach(result => {
-          if (result.status === 'Success' && err.writeValue?.rollNumber === result.rollNumber) {
-            result.status = 'Failed';
-            result.error = 'Duplicate rollNumber';
-          }
-        });
-      }
-
-      // Generate processed CSV
-      const fileId = uuidv4();
-      const outputFile = path.join(processedCsvDir, `${fileId}.csv`);
-      let csvContent = 'rollNumber,name,year,section,status,error\n';
-      results.forEach(result => {
-        csvContent += `"${result.rollNumber || ''}","${result.name || ''}",${result.year || ''},"${result.section || ''}","${result.status}","${result.error}"\n`;
-      });
-      await fsPromises.writeFile(outputFile, csvContent);
-
-      // Clean up old CSV files after 30 minutes
-      setTimeout(() => fsPromises.unlink(outputFile).catch(err => console.error('Error deleting CSV:', err)), 30 * 60 * 1000);
-
-      res.json({ message: `Processed ${results.length} records (${students.length} successful)`, fileId });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Error processing CSV' });
-    }
-  });
 
 
-  app.get('/admin/download-processed-csv', async (req, res) => {
-    try {
-      const { fileId } = req.query;
-      if (!fileId) {
-        return res.status(400).json({ error: 'Missing fileId' });
-      }
-      const filePath = path.join(processedCsvDir, `${fileId}.csv`);
-      if (!(await fsPromises.access(filePath).then(() => true).catch(() => false))) {
-        return res.status(404).json({ error: 'Processed CSV not found' });
-      }
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=processed_students_${fileId}.csv`);
-      res.sendFile(filePath, err => {
-        if (err) {
-          console.error(err);
-          res.status(500).json({ error: 'Error downloading CSV' });
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: 'Error downloading CSV' });
-    }
-  });
-
-app.post('/admin/upload-sheet', async (req, res) => {
-  try {
-    if (!req.files || !req.files.csvFile) {
-      return res.status(400).json({ error: 'No CSV file uploaded' });
-    }
-    const csvFile = req.files.csvFile;
-    const students = [];
-    await new Promise((resolve, reject) => {
-      fs.createReadStream(csvFile.tempFilePath)
-        .pipe(csv())
-        .on('data', (row) => {
-          if (!row.rollNumber || !row.name || !row.year || !['A', 'B', 'C'].includes(row.section)) {
-            return;
-          }
-          students.push({
-            rollNumber: row.rollNumber,
-            name: row.name,
-            year: parseInt(row.year),
-            section: row.section
-          });
-        })
-        .on('end', resolve)
-        .on('error', reject);
-    });
-    if (students.length === 0) {
-      return res.status(400).json({ error: 'Invalid CSV format or no valid data' });
-    }
-    await Student.insertMany(students, { ordered: false });
-    res.json({ message: 'Bulk upload successful' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error uploading students' });
-  }
-});
 
 // Start Server
 const PORT = process.env.PORT || 3000;
