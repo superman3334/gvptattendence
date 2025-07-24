@@ -5,24 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Check Attendance</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body>
+<body class="bg-light">
   <div class="container my-5">
     <h1 class="text-center mb-4">Check Attendance</h1>
     <div class="row justify-content-center">
       <div class="col-md-6">
-        <div class="card p-4">
-          <h3>Enter Details</h3>
+        <div class="card p-4 shadow-sm">
+          <h3 class="mb-3">Enter Details</h3>
           <div class="mb-3">
             <label for="rollNumber" class="form-label">Roll Number</label>
-            <input type="text" class="form-control" id="rollNumber" placeholder="CS101">
+            <input type="text" class="form-control" id="rollNumber" placeholder="e.g., CS101">
           </div>
           <div class="mb-3">
-            <label for="attendanceDate" class="form-label">Select Date</label>
+            <label for="attendanceDate" class="form-label">Select Date (Optional)</label>
             <input type="date" class="form-control" id="attendanceDate">
           </div>
-          <button onclick="checkAttendance()" class="btn btn-primary btn-lg w-100">Check Attendance</button>
+          <button onclick="checkAttendance()" class="btn btn-primary btn-lg w-100 mb-3">Check Attendance</button>
           <div id="attendanceResult" class="mt-3"></div>
         </div>
       </div>
@@ -34,37 +33,57 @@
   </div>
 
   <script>
+    function showMessage(message, isError = false) {
+      const attendanceResult = document.getElementById('attendanceResult');
+      attendanceResult.innerHTML = `<div class="alert ${isError ? 'alert-danger' : 'alert-success'}">${message}</div>`;
+      setTimeout(() => {
+        attendanceResult.innerHTML = '';
+      }, 5000);
+    }
+
     async function checkAttendance() {
-      const rollNumber = document.getElementById('rollNumber').value;
+      const rollNumber = document.getElementById('rollNumber').value.trim();
       const date = document.getElementById('attendanceDate').value;
       if (!rollNumber) {
-        document.getElementById('attendanceResult').innerHTML = '<div class="alert alert-danger">Please enter a roll number.</div>';
+        showMessage('Please enter a valid roll number.', true);
         return;
       }
-      const query = date ? `?rollNumber=${rollNumber}&date=${date}` : `?rollNumber=${rollNumber}`;
-      const response = await fetch(`/check-attendance${query}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rollNumber })
-      });
-      const data = await response.json();
-      const attendanceResult = document.getElementById('attendanceResult');
-      if (data.attendance.length === 0) {
-        attendanceResult.innerHTML = '<p>No attendance records found for this roll number' + (date ? ' on the selected date.' : '.') + '</p>';
-        return;
+      try {
+        const query = date ? `?date=${date}` : '';
+        const response = await fetch(`/check-attendance${query}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rollNumber })
+        });
+        const data = await response.json();
+        const attendanceResult = document.getElementById('attendanceResult');
+        if (data.error) {
+          showMessage(data.error, true);
+          return;
+        }
+        if (data.attendance.length === 0) {
+          showMessage(`No attendance records found for ${rollNumber}${date ? ' on ' + date : '.'}`, true);
+          return;
+        }
+        let html = '<h4 class="mb-2">Attendance Records</h4>';
+        html += `<p class="text-muted mb-2">Total Records: ${data.attendance.length}</p>`;
+        html += '<div class="table-responsive"><table class="table table-bordered"><thead><tr><th>Roll Number</th><th>Name</th><th>Date</th><th>Year</th><th>Section</th><th>Slot</th><th>Faculty</th></tr></thead><tbody>';
+        data.attendance.forEach(record => {
+          html += `<tr>
+            <td>${record.rollNumber}</td>
+            <td>${record.name || 'N/A'}</td>
+            <td>${new Date(record.timestamp).toLocaleString()}</td>
+            <td>${record.year || 'N/A'}</td>
+            <td>${record.section || 'N/A'}</td>
+            <td>${record.slotNumber || 'N/A'}</td>
+            <td>${record.facultyName || 'N/A'}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+        attendanceResult.innerHTML = html;
+      } catch (err) {
+        showMessage('Failed to fetch attendance: Network error.', true);
       }
-      let html = '<h4>Attendance Records</h4><table class="table table-bordered"><thead><tr><th>Roll Number</th><th>Date</th><th>Year</th><th>Section</th><th>Slot</th></tr></thead><tbody>';
-      data.attendance.forEach(record => {
-        html += `<tr>
-          <td>${record.rollNumber}</td>
-          <td>${new Date(record.timestamp).toLocaleString()}</td>
-          <td>${record.year || 'N/A'}</td>
-          <td>${record.sections ? record.sections.join(', ') : 'N/A'}</td>
-          <td>${record.slotNumber || 'N/A'}</td>
-        </tr>`;
-      });
-      html += '</tbody></table>';
-      attendanceResult.innerHTML = html;
     }
   </script>
 </body>

@@ -3,111 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Faculty Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>Faculty - Start Attendance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="container my-5">
-    <h1 class="text-center mb-4">Faculty Dashboard</h1>
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card p-4 mb-4">
-          <h3>Start Attendance</h3>
-          <div class="mb-3">
-            <label for="year" class="form-label">Year</label>
-            <select class="form-control" id="year">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Sections</label><br>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" id="sectionA" value="A">
-              <label class="form-check-label" for="sectionA">A</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" id="sectionB" value="B">
-              <label class="form-check-label" for="sectionB">B</label>
-            </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" id="sectionC" value="C">
-              <label class="form-check-label" for="sectionC">C</label>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="slotNumber" class="form-label">Slot Number</label>
-            <select class="form-control" id="slotNumber">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-            </select>
-          </div>
-          <button onclick="startAttendance()" class="btn btn-primary btn-lg w-100">Start Attendance</button>
-          <div id="qrCode" class="mt-3 text-center"></div>
-          <div id="timer" class="mt-3"></div>
-          <div id="attendedStudents" class="mt-3"></div>
-          <button id="stopButton" onclick="stopSlot()" class="btn btn-danger btn-lg w-100 mt-3" style="display: none;">Stop Slot</button>
-          <div id="result" class="mt-3"></div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card p-4 mb-4">
-          <h3>Manual Attendance</h3>
-          <div class="mb-3">
-            <label for="manualSlotId" class="form-label">Slot ID</label>
-            <input type="text" class="form-control" id="manualSlotId" placeholder="Enter Slot ID">
-          </div>
-          <div class="mb-3">
-            <label for="manualRollNumber" class="form-label">Roll Number</label>
-            <input type="text" class="form-control" id="manualRollNumber" placeholder="CS101">
-          </div>
-          <button onclick="markManualAttendance()" class="btn btn-primary btn-lg w-100">Mark Manual Attendance</button>
-          <div id="manualResult" class="mt-3"></div>
-        </div>
-      </div>
-    </div>
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card p-4 mb-4">
-        <h3>View Attendance</h3>
-        <div class="mb-3">
-          <label for="viewDate" class="form-label">Select Date</label>
-          <input type="date" class="form-control" id="viewDate" required>
-        </div>
-        <div class="mb-3">
-          <label for="viewYear" class="form-label">Year</label>
-          <select class="form-control" id="viewYear" required>
-            <option value="" disabled selected>Select Year</option>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Faculty Dashboard</h1>
+
+    <!-- Start Attendance -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Start Attendance</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
+          <select id="year" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Select Year</option>
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
           </select>
         </div>
-        <div class="mb-3">
-          <label for="viewSection" class="form-label">Section</label>
-          <select class="form-control" id="viewSection" required>
-            <option value="" disabled selected>Select Section</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-          </select>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Sections</label>
+          <div class="mt-1 flex space-x-4">
+            <label><input type="checkbox" id="sectionA" value="A"> A</label>
+            <label><input type="checkbox" id="sectionB" value="B"> B</label>
+            <label><input type="checkbox" id="sectionC" value="C"> C</label>
+          </div>
         </div>
-        <div class="mb-3">
-          <label for="viewSlotNumber" class="form-label">Slot Number</label>
-          <select class="form-control" id="viewSlotNumber" required>
-            <option value="" disabled selected>Select Slot</option>
+        <div>
+          <label for="slotNumber" class="block text-sm font-medium text-gray-700">Slot Number</label>
+          <select id="slotNumber" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Select Slot</option>
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
@@ -118,219 +46,434 @@
             <option value="8">8</option>
           </select>
         </div>
-        <button onclick="fetchAttendance()" class="btn btn-primary btn-lg w-100">View Attendance</button>
-        <button onclick="downloadAttendance()" class="btn btn-success btn-lg w-100 mt-2">Download as Excel</button>
-        <div id="attendanceViewResult" class="mt-3"></div>
       </div>
+      <button id="startButton" onclick="startAttendance()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Start Attendance</button>
+      <div id="result" class="mt-4 hidden"></div>
+      <div id="qrCode" class="mt-4"></div>
+      <div id="qrTimer" class="mt-2 text-gray-700"></div>
+      <div id="slotTimer" class="mt-2 text-gray-700"></div>
+      <button id="stopButton" onclick="stopSlot()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4 hidden">Stop Slot</button>
+      <button id="extendButton" onclick="extendSlot()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mt-4 hidden">Extend Slot (45s)</button>
     </div>
-  </div>
-    <div class="text-center">
-      <a href="/" class="btn btn-secondary">Back to Login</a>
+
+    <!-- Attended Students -->
+    <div id="attendedStudents" class="bg-white p-6 rounded-lg shadow-md mb-6"></div>
+
+    <!-- Manual Attendance -->
+    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+      <h2 class="text-xl font-semibold mb-4">Mark Manual Attendance</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label for="manualSlotId" class="block text-sm font-medium text-gray-700">Slot ID</label>
+          <input type="text" id="manualSlotId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Enter Slot ID">
+        </div>
+        <div>
+          <label for="manualRollNumber" class="block text-sm font-medium text-gray-700">Roll Number</label>
+          <input type="text" id="manualRollNumber" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Enter Roll Number">
+        </div>
+      </div>
+      <button onclick="markManualAttendance()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Mark Manual Attendance</button>
+      <div id="manualResult" class="mt-4 hidden"></div>
     </div>
-  </div>
 
-  <script>
-    let currentSlotId = null;
-    let timerInterval = null;
-    const urlParams = new URLSearchParams(window.location.search);
-    const facultyId = urlParams.get('facultyId');
+    <!-- View Attendance -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h2 class="text-xl font-semibold mb-4">View Attendance</h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div>
+          <label for="viewDate" class="block text-sm font-medium text-gray-700">Date</label>
+          <input type="date" id="viewDate" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        </div>
+        <div>
+          <label for="viewYear" class="block text-sm font-medium text-gray-700">Year</label>
+          <select id="viewYear" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Select Year</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div>
+          <label for="viewSection" class="block text-sm font-medium text-gray-700">Section</label>
+          <select id="viewSection" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Select Section</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
+        </div>
+        <div>
+          <label for="viewSlotNumber" class="block text-sm font-medium text-gray-700">Slot Number</label>
+          <select id="viewSlotNumber" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">Select Slot</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex space-x-4">
+        <button onclick="fetchAttendance()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">View Attendance</button>
+        <button onclick="downloadAttendance()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Download as Excel</button>
+      </div>
+      <div id="attendanceViewResult" class="mt-4"></div>
+    </div>
 
-    async function startAttendance() {
-      const year = document.getElementById('year').value;
-      const sections = [];
-      if (document.getElementById('sectionA').checked) sections.push('A');
-      if (document.getElementById('sectionB').checked) sections.push('B');
-      if (document.getElementById('sectionC').checked) sections.push('C');
-      const slotNumber = document.getElementById('slotNumber').value;
-      if (!year || sections.length === 0 || !slotNumber) {
-        document.getElementById('result').innerHTML = '<div class="alert alert-danger">Please select year, at least one section, and slot number.</div>';
-        return;
+    <script>
+      let currentSlotId = null;
+      let lastSlotId = null;
+      let qrTimerInterval = null;
+      let slotTimerInterval = null;
+      let pollInterval = null;
+      let slotExpiresAt = null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const facultyId = urlParams.get('facultyId');
+
+      // Display Message
+      function showMessage(elementId, text, isError = false) {
+        const element = document.getElementById(elementId);
+        element.innerHTML = `<div class="p-4 rounded-lg ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${text}</div>`;
+        element.classList.remove('hidden');
+        setTimeout(() => {
+          element.innerHTML = '';
+          element.classList.add('hidden');
+        }, 5000);
       }
-      try {
-        const response = await fetch('/faculty/start-attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ year, sections, slotNumber, facultyId })
-        });
-        const data = await response.json();
-        if (data.error) {
-          document.getElementById('result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+
+      // Validate ObjectId
+      function isValidObjectId(id) {
+        return /^[0-9a-fA-F]{24}$/.test(id);
+      }
+
+      // Update Timers
+      function updateTimers() {
+        if (!slotExpiresAt) return;
+        const now = new Date().getTime();
+        const expiresAt = new Date(slotExpiresAt).getTime();
+        const qrTimeLeft = 15 - Math.floor((now % 15000) / 1000);
+        const slotTimeLeft = Math.floor((expiresAt - now) / 1000);
+
+        if (slotTimeLeft <= 0) {
+          clearInterval(qrTimerInterval);
+          clearInterval(slotTimerInterval);
+          document.getElementById('qrTimer').textContent = '';
+          document.getElementById('slotTimer').textContent = 'Slot expired';
+          document.getElementById('qrCode').innerHTML = '';
+          document.getElementById('startButton').classList.remove('hidden');
+          document.getElementById('stopButton').classList.add('hidden');
+          document.getElementById('extendButton').classList.remove('hidden');
+          stopPolling();
           return;
         }
-        currentSlotId = data.slotId;
-        document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" style="width: 300px; height: 300px;">`;
-        document.getElementById('stopButton').style.display = 'block';
-        updateAttendedStudents(data.attendedStudents);
-        startTimer();
-        setTimeout(refreshQRCode, 15000);
-        setTimeout(refreshQRCode, 30000);
-        setTimeout(stopSlot, 45000);
-      } catch (err) {
-        document.getElementById('result').innerHTML = '<div class="alert alert-danger">Failed to start attendance. Please try again.</div>';
+
+        document.getElementById('qrTimer').textContent = `QR Code expires in ${qrTimeLeft} seconds`;
+        document.getElementById('slotTimer').textContent = `Slot expires in ${slotTimeLeft} seconds`;
       }
-    }
 
-    function startTimer() {
-      let timeLeft = 45;
-      document.getElementById('timer').innerHTML = `Time left: ${timeLeft} seconds`;
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById('timer').innerHTML = `Time left: ${timeLeft} seconds`;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          document.getElementById('timer').innerHTML = 'Slot ended';
-          document.getElementById('qrCode').innerHTML = '';
-          document.getElementById('stopButton').style.display = 'none';
-        }
-      }, 1000);
-    }
+      // Start Timers
+      function startTimers(expiresAt) {
+        slotExpiresAt = expiresAt;
+        clearInterval(qrTimerInterval);
+        clearInterval(slotTimerInterval);
+        qrTimerInterval = setInterval(updateTimers, 1000);
+        slotTimerInterval = setInterval(updateTimers, 1000);
+        updateTimers();
+      }
 
-    async function refreshQRCode() {
-      if (!currentSlotId) return;
-      try {
-        const response = await fetch('/faculty/refresh-qr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slotId: currentSlotId, facultyId })
-        });
-        const data = await response.json();
-        if (data.error) {
-          document.getElementById('result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-          document.getElementById('qrCode').innerHTML = '';
-          document.getElementById('stopButton').style.display = 'none';
-          clearInterval(timerInterval);
-          updateAttendedStudents(data.attendedStudents);
+      // Start Attendance
+      async function startAttendance() {
+        const year = document.getElementById('year').value;
+        const sections = [];
+        if (document.getElementById('sectionA').checked) sections.push('A');
+        if (document.getElementById('sectionB').checked) sections.push('B');
+        if (document.getElementById('sectionC').checked) sections.push('C');
+        const slotNumber = document.getElementById('slotNumber').value;
+        if (!year || sections.length === 0 || !slotNumber) {
+          showMessage('result', 'Please select year, at least one section, and slot number.', true);
           return;
         }
-        document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" style="width: 300px; height: 300px;">`;
-        updateAttendedStudents(data.attendedStudents);
-      } catch (err) {
-        document.getElementById('result').innerHTML = '<div class="alert alert-danger">Failed to refresh QR code.</div>';
-      }
-    }
-
-    async function stopSlot() {
-      if (!currentSlotId) return;
-      try {
-        const response = await fetch('/faculty/stop-slot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slotId: currentSlotId, facultyId })
-        });
-        const data = await response.json();
-        document.getElementById('result').innerHTML = `<div class="alert ${data.error ? 'alert-danger' : 'alert-success'}">${data.error || data.message}</div>`;
-        document.getElementById('qrCode').innerHTML = '';
-        document.getElementById('stopButton').style.display = 'none';
-        clearInterval(timerInterval);
-        document.getElementById('timer').innerHTML = 'Slot ended';
-        updateAttendedStudents(data.attendedStudents);
-        currentSlotId = null;
-      } catch (err) {
-        document.getElementById('result').innerHTML = '<div class="alert alert-danger">Failed to stop slot.</div>';
-      }
-    }
-
-    function updateAttendedStudents(attendedStudents) {
-      const attendedStudentsDiv = document.getElementById('attendedStudents');
-      if (attendedStudents && attendedStudents.length > 0) {
-        let html = '<h4>Attended Students</h4><table class="table table-bordered"><thead><tr><th>Roll Number</th><th>Name</th><th>Section</th></tr></thead><tbody>';
-        const uniqueStudents = new Set();
-        attendedStudents.forEach(student => {
-          const key = `${student.rollNumber}-${student.section}`;
-          if (!uniqueStudents.has(key)) {
-            uniqueStudents.add(key);
-            html += `<tr><td>${student.rollNumber}</td><td>${student.name}</td><td>${student.section}</td></tr>`;
+        try {
+          const response = await fetch('/faculty/start-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ year, sections, slotNumber, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            return;
           }
-        });
-        html += `</tbody></table><button class="btn btn-success mt-3" onclick="downloadSlotAttendance('${currentSlotId}')">Download Slot Attendance</button>`;
-        attendedStudentsDiv.innerHTML = html;
-      } else {
-        attendedStudentsDiv.innerHTML = '<p>No students attended yet.</p>';
+          currentSlotId = data.slotId;
+          lastSlotId = data.slotId;
+          document.getElementById('manualSlotId').value = currentSlotId;
+          showMessage('result', `Slot taken successfully. Slot ID: ${currentSlotId}`);
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          document.getElementById('startButton').classList.add('hidden');
+          document.getElementById('stopButton').classList.remove('hidden');
+          document.getElementById('extendButton').classList.add('hidden');
+          updateAttendedStudents(data.attendedStudents || []);
+          startTimers(data.slotExpiresAt);
+          startPolling();
+          const timeToNextRefresh = 15000 - (new Date().getTime() % 15000);
+          setTimeout(refreshQRCode, timeToNextRefresh);
+        } catch (err) {
+          showMessage('result', 'Failed to start attendance: ' + err.message, true);
+        }
       }
-    }
 
-    async function markManualAttendance() {
-      const slotId = document.getElementById('manualSlotId').value;
-      const rollNumber = document.getElementById('manualRollNumber').value;
-      if (!slotId || !rollNumber) {
-        document.getElementById('manualResult').innerHTML = '<div class="alert alert-danger">Please enter slot ID and roll number.</div>';
-        return;
+      // Poll for Attended Students
+      function startPolling() {
+        if (!currentSlotId) return;
+        pollInterval = setInterval(async () => {
+          try {
+            const response = await fetch(`/faculty/slots?facultyId=${facultyId}&slotId=${currentSlotId}`);
+            const data = await response.json();
+            if (data.error) {
+              showMessage('result', data.error, true);
+              return;
+            }
+            updateAttendedStudents(data.attendedStudents || []);
+          } catch (err) {
+            showMessage('result', 'Failed to fetch attended students: ' + err.message, true);
+          }
+        }, 5000);
       }
-      try {
-        const response = await fetch('/faculty/manual-attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ facultyId, rollNumber, slotId })
-        });
-        const data = await response.json();
-        document.getElementById('manualResult').innerHTML = `<div class="alert ${data.error ? 'alert-danger' : 'alert-success'}">${data.error || data.message}</div>`;
-        if (!data.error && currentSlotId === slotId) {
+
+      function stopPolling() {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }
+
+      // Refresh QR Code
+      async function refreshQRCode() {
+        if (!currentSlotId) return;
+        try {
+          const response = await fetch('/faculty/refresh-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: currentSlotId, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            document.getElementById('qrCode').innerHTML = '';
+            document.getElementById('startButton').classList.remove('hidden');
+            document.getElementById('stopButton').classList.add('hidden');
+            document.getElementById('extendButton').classList.remove('hidden');
+            clearInterval(qrTimerInterval);
+            clearInterval(slotTimerInterval);
+            document.getElementById('qrTimer').textContent = '';
+            document.getElementById('slotTimer').textContent = 'Slot expired';
+            slotExpiresAt = null;
+            stopPolling();
+            updateAttendedStudents(data.attendedStudents || []);
+            return;
+          }
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          slotExpiresAt = data.slotExpiresAt;
+          updateAttendedStudents(data.attendedStudents || []);
+          const timeToNextRefresh = 15000 - (new Date().getTime() % 15000);
+          setTimeout(refreshQRCode, timeToNextRefresh);
+        } catch (err) {
+          showMessage('result', 'Failed to refresh QR code: ' + err.message, true);
+        }
+      }
+
+      // Extend Slot
+      async function extendSlot() {
+        if (!currentSlotId) return;
+        try {
+          const response = await fetch('/faculty/extend-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: currentSlotId, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            return;
+          }
+          showMessage('result', 'Slot extended by 45 seconds');
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          document.getElementById('startButton').classList.add('hidden');
+          document.getElementById('stopButton').classList.remove('hidden');
+          document.getElementById('extendButton').classList.add('hidden');
+          slotExpiresAt = data.slotExpiresAt;
+          startTimers(data.slotExpiresAt);
+          startPolling();
+          updateAttendedStudents(data.attendedStudents || []);
+          const timeToNextRefresh = 15000 - (new Date().getTime() % 15000);
+          setTimeout(refreshQRCode, timeToNextRefresh);
+        } catch (err) {
+          showMessage('result', 'Failed to extend slot: ' + err.message, true);
+        }
+      }
+
+      // Stop Slot
+      async function stopSlot() {
+        if (!currentSlotId) return;
+        try {
+          const response = await fetch('/faculty/stop-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: currentSlotId, facultyId })
+          });
+          const data = await response.json();
+          showMessage('result', data.error || 'Slot stopped successfully', data.error);
+          document.getElementById('qrCode').innerHTML = '';
+          document.getElementById('startButton').classList.remove('hidden');
+          document.getElementById('stopButton').classList.add('hidden');
+          document.getElementById('extendButton').classList.add('hidden');
+          clearInterval(qrTimerInterval);
+          clearInterval(slotTimerInterval);
+          document.getElementById('qrTimer').textContent = '';
+          document.getElementById('slotTimer').textContent = '';
+          slotExpiresAt = null;
+          stopPolling();
+          updateAttendedStudents(data.attendedStudents || []);
+          currentSlotId = null;
+        } catch (err) {
+          showMessage('result', 'Failed to stop slot: ' + err.message, true);
+        }
+      }
+
+      // Update Attended Students
+      function updateAttendedStudents(attendedStudents) {
+        const attendedStudentsDiv = document.getElementById('attendedStudents');
+        if (attendedStudents && attendedStudents.length > 0) {
+          let html = '<h4 class="text-lg font-semibold mb-2">Attended Students</h4>';
+          html += `<p class="text-gray-700 mb-2">Total Attended: ${attendedStudents.length}</p>`;
+          html += '<div class="overflow-x-auto"><table class="w-full border-collapse"><thead><tr class="bg-gray-200"><th class="border p-2">Roll Number</th><th class="border p-2">Name</th><th class="border p-2">Section</th><th class="border p-2">Timestamp</th></tr></thead><tbody>';
+          const uniqueStudents = new Set();
+          attendedStudents.forEach(student => {
+            const key = `${student.rollNumber}-${student.section}`;
+            if (!uniqueStudents.has(key)) {
+              uniqueStudents.add(key);
+              html += `<tr><td class="border p-2">${student.rollNumber}</td><td class="border p-2">${student.name || 'N/A'}</td><td class="border p-2">${student.section}</td><td class="border p-2">${new Date(student.timestamp).toLocaleString()}</td></tr>`;
+            }
+          });
+          html += '</tbody></table></div>';
+          if (currentSlotId || lastSlotId) {
+            const slotId = currentSlotId || lastSlotId;
+            html += `<button onclick="downloadSlotAttendance('${slotId}')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4">Download Slot Attendance</button>`;
+          }
+          attendedStudentsDiv.innerHTML = html;
+        } else {
+          let html = '<p class="text-gray-500">No students attended yet.</p>';
+          if (lastSlotId) {
+            html += `<button onclick="downloadSlotAttendance('${lastSlotId}')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4">Download Slot Attendance</button>`;
+          }
+          attendedStudentsDiv.innerHTML = html;
+        }
+      }
+
+      // Mark Manual Attendance
+      async function markManualAttendance() {
+        const slotId = document.getElementById('manualSlotId').value;
+        const rollNumber = document.getElementById('manualRollNumber').value;
+        if (!slotId || !rollNumber) {
+          showMessage('manualResult', 'Please enter slot ID and roll number.', true);
+          return;
+        }
+        if (!isValidObjectId(slotId)) {
+          showMessage('manualResult', 'Invalid Slot ID. Must be a 24-character hex string.', true);
+          return;
+        }
+        try {
+          const response = await fetch('/faculty/manual-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ facultyId, rollNumber, slotId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('manualResult', data.error, true);
+            return;
+          }
+          showMessage('manualResult', 'Manual attendance marked successfully');
           const slotResponse = await fetch(`/faculty/slots?facultyId=${facultyId}&slotId=${slotId}`);
           const slotData = await slotResponse.json();
-          updateAttendedStudents(slotData.attendedStudents);
+          if (slotData.error) {
+            showMessage('manualResult', slotData.error, true);
+            return;
+          }
+          if (slotId === currentSlotId || slotId === lastSlotId || !currentSlotId) {
+            updateAttendedStudents(slotData.attendedStudents || []);
+          }
+        } catch (err) {
+          showMessage('manualResult', 'Failed to mark manual attendance: ' + err.message, true);
         }
-      } catch (err) {
-        document.getElementById('manualResult').innerHTML = '<div class="alert alert-danger">Failed to mark manual attendance. Please try again.</div>';
       }
-    }
 
-
-    async function fetchAttendance() {
-      const date = document.getElementById('viewDate').value;
-      const year = document.getElementById('viewYear').value;
-      const section = document.getElementById('viewSection').value;
-      const slotNumber = document.getElementById('viewSlotNumber').value;
-      if (!date || !year || !section || !slotNumber) {
-        document.getElementById('attendanceViewResult').innerHTML = '<div class="alert alert-danger">Please select date, year, section, and slot number.</div>';
-        return;
-      }
-      try {
-        const response = await fetch(`/faculty/attendance?facultyId=${facultyId}&date=${date}&year=${year}&section=${section}&slotNumber=${slotNumber}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ facultyId, year, section, slotNumber })
-        });
-        const data = await response.json();
-        const attendanceViewResult = document.getElementById('attendanceViewResult');
-        if (data.error) {
-          attendanceViewResult.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+      // Fetch Attendance
+      async function fetchAttendance() {
+        const date = document.getElementById('viewDate').value;
+        const year = document.getElementById('viewYear').value;
+        const section = document.getElementById('viewSection').value;
+        const slotNumber = document.getElementById('viewSlotNumber').value;
+        if (!date || !year || !section || !slotNumber) {
+          showMessage('attendanceViewResult', 'Please select date, year, section, and slot number.', true);
           return;
         }
-        if (data.attendance.length === 0) {
-          attendanceViewResult.innerHTML = '<p>No attendance records found for the selected date, year, section, and slot.</p>';
+        try {
+          const response = await fetch(`/faculty/attendance?date=${date}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ facultyId, year, section, slotNumber })
+          });
+          const data = await response.json();
+          const attendanceViewResult = document.getElementById('attendanceViewResult');
+          if (data.error) {
+            showMessage('attendanceViewResult', data.error, true);
+            return;
+          }
+          if (data.attendance.length === 0) {
+            attendanceViewResult.innerHTML = '<p class="text-gray-500">No attendance records found for the selected criteria.</p>';
+            return;
+          }
+          let html = '<h4 class="text-lg font-semibold mb-2">Attendance Records</h4>';
+          html += `<p class="text-gray-700 mb-2">Total Attended: ${data.attendance.length}</p>`;
+          html += '<div class="overflow-x-auto"><table class="w-full border-collapse"><thead><tr class="bg-gray-200"><th class="border p-2">Roll Number</th><th class="border p-2">Name</th><th class="border p-2">Section</th><th class="border p-2">Timestamp</th><th class="border p-2">Slot</th></tr></thead><tbody>';
+          data.attendance.forEach(record => {
+            html += `<tr><td class="border p-2">${record.rollNumber}</td><td class="border p-2">${record.name || 'N/A'}</td><td class="border p-2">${record.section || 'N/A'}</td><td class="border p-2">${new Date(record.timestamp).toLocaleString()}</td><td class="border p-2">${record.slotNumber}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+          attendanceViewResult.innerHTML = html;
+        } catch (err) {
+          showMessage('attendanceViewResult', 'Failed to fetch attendance: ' + err.message, true);
+        }
+      }
+
+      // Download Attendance
+      async function downloadAttendance() {
+        const date = document.getElementById('viewDate').value;
+        const year = document.getElementById('viewYear').value;
+        const section = document.getElementById('viewSection').value;
+        const slotNumber = document.getElementById('viewSlotNumber').value;
+        if (!date || !year || !section || !slotNumber) {
+          showMessage('attendanceViewResult', 'Please select date, year, section, and slot number.', true);
           return;
         }
-        let html = '<h4>Attendance Records</h4><table class="table table-bordered"><thead><tr><th>Roll Number</th><th>Name</th><th>Section</th><th>Date</th><th>Slot</th></tr></thead><tbody>';
-        data.attendance.forEach(record => {
-          html += `<tr>
-            <td>${record.rollNumber}</td>
-            <td>${record.name || 'N/A'}</td>
-            <td>${record.section || 'N/A'}</td>
-            <td>${new Date(record.timestamp).toLocaleString()}</td>
-            <td>${record.slotNumber || 'N/A'}</td>
-          </tr>`;
-        });
-        html += '</tbody></table>';
-        attendanceViewResult.innerHTML = html;
-      } catch (err) {
-        document.getElementById('attendanceViewResult').innerHTML = '<div class="alert alert-danger">Failed to fetch attendance. Please check your input or try again later.</div>';
+        window.location.href = `/faculty/download-attendance?facultyId=${facultyId}&date=${date}&year=${year}§ion=${section}&slotNumber=${slotNumber}`;
       }
-    }
 
-    async function downloadAttendance() {
-      const date = document.getElementById('viewDate').value;
-      const year = document.getElementById('viewYear').value;
-      const section = document.getElementById('viewSection').value;
-      const slotNumber = document.getElementById('viewSlotNumber').value;
-      if (!date || !year || !section || !slotNumber) {
-        document.getElementById('attendanceViewResult').innerHTML = '<div class="alert alert-danger">Please select date, year, section, and slot number.</div>';
-        return;
+      // Download Slot Attendance
+      async function downloadSlotAttendance(slotId) {
+        if (!isValidObjectId(slotId)) {
+          showMessage('result', 'Invalid Slot ID for download.', true);
+          return;
+        }
+        window.location.href = `/faculty/download-slot-attendance?facultyId=${facultyId}&slotId=${slotId}`;
       }
-      window.location.href = `/faculty/download-attendance?facultyId=${facultyId}&date=${date}&year=${year}&section=${section}&slotNumber=${slotNumber}`;
-    }
-    async function downloadSlotAttendance(slotId) {
-      window.location.href = `/faculty/download-slot-attendance?facultyId=${facultyId}&slotId=${slotId}`;
-    }
-  </script>
+    </script>
+  </div>
 </body>
 </html>

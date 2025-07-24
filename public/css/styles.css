@@ -54,3 +54,147 @@ body {
   background-color: #007bff;
   color: white;
 }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* Container styling */
+.container {
+  max-width: 600px;
+  margin-top: 3rem;
+  margin-bottom: 3rem;
+}
+
+/* Card styling */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  background-color: #ffffff;
+}
+
+/* Heading styling */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Subheading styling */
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Form inputs */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid #ced4da;
+  padding: 0.75rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Labels */
+.form-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* Alerts */
+.alert {
+  border-radius: 8px;
+  font-size: 0.9rem;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.alert.alert-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.alert.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+/* Button container styling */
+.text-center.w-100 {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .container {
+    margin-top: 2rem;
+    padding: 0 1rem;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+    padding: 0.6rem;
+    width: 100%; /* Full-width buttons on mobile */
+  }
+
+  .text-center.w-100 {
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 1.5rem; /* Increased gap for clear separation */
+    padding: 1.5rem;
+  }
+}
