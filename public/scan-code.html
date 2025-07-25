@@ -113,10 +113,7 @@ function tryStorageQuotaCheck(resolve) {
         resolve(true);
       }
     }
-    if (!(await restrictToChrome())) {
-    showMessage('Please use Google Chrome to scan the QR code.', true);
-    return;
-  }
+
     async function startScanner() {
       const rollNumber = document.getElementById('rollNumber').value.trim();
       if (!rollNumber) {
@@ -127,6 +124,10 @@ function tryStorageQuotaCheck(resolve) {
       showMessage('Incognito mode detected. Please use normal mode in Chrome.', true);
       return;
     }
+        if (!(await restrictToChrome())) {
+    showMessage('Please use Google Chrome to scan the QR code.', true);
+    return;
+  }
 
       // Generate fingerprint
       try {
