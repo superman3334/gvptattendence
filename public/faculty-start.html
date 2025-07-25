@@ -162,7 +162,7 @@
         if (slotTimeLeft <= 0) {
           clearInterval(qrTimerInterval);
           clearInterval(slotTimerInterval);
-          document.getElementById('qrTimer').textContent = '';
+         
           document.getElementById('slotTimer').textContent = 'Slot expired';
           document.getElementById('qrCode').innerHTML = '';
           document.getElementById('startButton').classList.remove('hidden');
@@ -172,7 +172,7 @@
           return;
         }
 
-        document.getElementById('qrTimer').textContent = `QR Code expires in ${qrTimeLeft} seconds`;
+    
         document.getElementById('slotTimer').textContent = `Slot expires in ${slotTimeLeft} seconds`;
       }
 
