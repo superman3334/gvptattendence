@@ -81,7 +81,7 @@ function tryStorageQuotaCheck(resolve) {
           return;
         }
         // Write 2 MB to localStorage
-        const testData = 'x'.repeat(5 * 1024 * 1024); // 2 MB
+        const testData = 'x'.repeat(2* 1024 * 1024); // 2 MB
         localStorage.setItem('incognitoTest', testData);
         localStorage.removeItem('incognitoTest');
         console.log('localStorage 2MB test passed (normal mode)');
