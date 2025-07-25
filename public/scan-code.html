@@ -2,11 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Mark Attendance</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3.3.3/dist/fp.min.js"></script>
+  <style>
+    .video-container {
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+      max-height: 50vh;
+    }
+    #video {
+      width: 100%;
+      height: auto;
+      transform-origin: center center;
+      touch-action: none;
+      display: block;
+    }
+    #canvas {
+      display: none;
+    }
+    #zoomControls {
+      display: none;
+      margin-top: 10px;
+    }
+    #zoomWarning {
+      display: none;
+      font-size: 0.9em;
+      color: #dc3545;
+    }
+  </style>
 </head>
 <body class="bg-light">
   <div class="container my-5">
@@ -19,11 +46,16 @@
             <label for="rollNumber" class="form-label">Roll Number</label>
             <input type="text" class="form-control" id="rollNumber" placeholder="e.g., CS101">
           </div>
-          <div class="mb-3 text-center">
-            <video id="video" width="100%" height="auto" class="border rounded" style="display: none;"></video>
-            <canvas id="canvas" style="display: none;"></canvas>
+          <div class="mb-3 text-center video-container">
+            <video id="video" class="border rounded" style="display: none;"></video>
+            <canvas id="canvas"></canvas>
           </div>
           <button onclick="startScanner()" class="btn btn-primary btn-lg w-100 mb-3">Start Scanner</button>
+          <div id="zoomControls" class="text-center">
+            <button id="zoomIn" class="btn btn-secondary btn-sm mx-1">Zoom In</button>
+            <button id="zoomOut" class="btn btn-secondary btn-sm mx-1">Zoom Out</button>
+          </div>
+          <div id="zoomWarning" class="text-center mt-2"></div>
           <div id="scanResult" class="mt-3"></div>
         </div>
       </div>
@@ -44,74 +76,85 @@
         scanResult.innerHTML = '';
       }, 5000);
     }
-function isIncognitoMode() {
+
+    function restrictToChrome() {
       return new Promise(resolve => {
-        console.log('Browser:', navigator.userAgent);
-        if (!navigator.userAgent.includes('Chrome')) {
-          console.log('Non-Chrome browser detected, assuming incognito for safety');
-          resolve(true);
-          return;
-        }
-        // Try FileSystem API
-        const fs = window.webkitRequestFileSystem || window.requestFileSystem;
-        console.log('FileSystem API available:', !!fs);
-        if (fs) {
-          fs(window.TEMPORARY, 100, () => {
-            console.log('FileSystem access granted (normal mode)');
-            tryStorageQuotaCheck(resolve);
-          }, err => {
-            console.log('FileSystem error (likely incognito):', err.name, err.message);
-            resolve(true);
-          });
-          return;
-        }
-        tryStorageQuotaCheck(resolve);
+        const userAgent = navigator.userAgent;
+        const isChrome = /Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
+        const isSafari = userAgent.includes('Safari/') && !/Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
+        const isBlocked = isSafari || /Edge\/[\d.]+|Brave\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent);
+        console.log('Browser:', userAgent);
+        console.log('Is Chrome:', isChrome, 'Is Safari:', isSafari, 'Is Blocked:', isBlocked);
+        resolve(isChrome && !isBlocked);
       });
     }
-    function restrictToChrome() {
-  return new Promise(resolve => {
-    const userAgent = navigator.userAgent;
-    const isChrome = /Chrome\/[\d.]+/.test(userAgent) && !/Edge\/[\d.]+|SamsungInternet\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent);
-    const hasChromeObject = typeof window.chrome === 'object' && window.chrome !== null;
-    console.log('Browser:', userAgent);
-    console.log('Is Chrome:', isChrome, 'Has Chrome Object:', hasChromeObject);
-    resolve(isChrome && hasChromeObject);
-  });
-}
 
-function tryStorageQuotaCheck(resolve) {
-      try {
-        // Test sessionStorage persistence (incognito clears per tab)
-        sessionStorage.setItem('incognitoCheck', 'test');
-        const sessionPersists = sessionStorage.getItem('incognitoCheck') === 'test';
-        console.log('sessionStorage persists:', sessionPersists);
-        if (!sessionPersists) {
-          console.log('sessionStorage cleared, likely incognito');
-          resolve(true);
-          return;
-        }
-        // Write 2 MB to localStorage
-        const testData = 'x'.repeat(2* 1024 * 1024); // 2 MB
-        localStorage.setItem('incognitoTest', testData);
-        localStorage.removeItem('incognitoTest');
-        console.log('localStorage 2MB test passed (normal mode)');
-        // Check storage quota
-        if (navigator.storage && navigator.storage.estimate) {
-          navigator.storage.estimate().then(estimate => {
-            console.log('Storage quota:', estimate.quota || 0, 'bytes');
-            resolve(estimate.quota < 10 * 1024 * 1024); // <10 MB
-          }).catch(err => {
-            console.log('Storage estimate error:', err.message);
-            resolve(false);
-          });
-        } else {
-          console.log('No storage.estimate API, assuming normal mode');
-          resolve(false);
-        }
-      } catch (e) {
-        console.log('localStorage quota exceeded (likely incognito):', e.name, e.message);
-        resolve(true);
+    function setupZoomControls(video, canvas, videoTrack) {
+      let scale = 1.0;
+      let lastDistance = null;
+      const maxScale = 4.0;
+      const minScale = 1.0;
+      const zoomStep = 0.5;
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+      if (isIOS) {
+        document.getElementById('zoomWarning').style.display = 'block';
+        document.getElementById('zoomWarning').textContent = 'Zoom is limited on iOS. Move closer or ensure a large QR code.';
       }
+
+      function applyZoom(newScale) {
+        scale = Math.max(minScale, Math.min(maxScale, newScale));
+        if (videoTrack && videoTrack.getCapabilities && videoTrack.getCapabilities().zoom) {
+          const zoomMin = videoTrack.getCapabilities().zoomMin || 1.0;
+          const zoomMax = videoTrack.getCapabilities().zoomMax || 4.0;
+          const nativeScale = Math.max(zoomMin, Math.min(zoomMax, scale));
+          videoTrack.applyConstraints({ zoom: nativeScale }).catch(err => {
+            console.log('Native zoom error:', err.message);
+            video.style.transform = `scale(${scale})`;
+            canvas.style.transform = `scale(${scale})`;
+          });
+          console.log('Native zoom:', nativeScale);
+        } else {
+          video.style.transform = `scale(${scale})`;
+          canvas.style.transform = `scale(${scale})`;
+          console.log('CSS zoom:', scale);
+        }
+      }
+
+      video.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          lastDistance = Math.sqrt(dx * dx + dy * dy);
+        }
+      });
+
+      video.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (lastDistance) {
+            const delta = distance / lastDistance;
+            applyZoom(scale * delta);
+          }
+          lastDistance = distance;
+        }
+      });
+
+      video.addEventListener('touchend', () => {
+        lastDistance = null;
+      });
+
+      document.getElementById('zoomIn').addEventListener('click', () => {
+        applyZoom(scale + zoomStep);
+      });
+
+      document.getElementById('zoomOut').addEventListener('click', () => {
+        applyZoom(scale - zoomStep);
+      });
     }
 
     async function startScanner() {
@@ -120,22 +163,17 @@ function tryStorageQuotaCheck(resolve) {
         showMessage('Please enter a valid roll number.', true);
         return;
       }
-      if (await isIncognitoMode()) {
-      showMessage('Incognito mode detected. Please use normal mode in Chrome.', true);
-      return;
-    }
-        if (!(await restrictToChrome())) {
-    showMessage('Please use Google Chrome to scan the QR code.', true);
-    return;
-  }
+      if (!(await restrictToChrome())) {
+        showMessage('Please use Google Chrome to scan the QR code.', true);
+        return;
+      }
 
-      // Generate fingerprint
       try {
         const fp = await FingerprintJS.load();
         const result = await fp.get({ extendedResult: true });
-        const fingerprint = result.visitorId + '-' + 
-          navigator.userAgent + '-' + 
-          window.screen.width + 'x' + window.screen.height + '-' + 
+        const fingerprint = result.visitorId + '-' +
+          navigator.userAgent + '-' +
+          window.screen.width + 'x' + window.screen.height + '-' +
           (window.WebGLRenderingContext ? getWebGLFingerprint() : 'no-webgl');
 
         const video = document.getElementById('video');
@@ -143,11 +181,13 @@ function tryStorageQuotaCheck(resolve) {
         const context = canvas.getContext('2d');
         video.style.display = 'block';
         canvas.style.display = 'none';
+        document.getElementById('zoomControls').style.display = 'block';
 
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
           video.srcObject = stream;
           video.play();
+          setupZoomControls(video, canvas, stream.getVideoTracks()[0]);
           video.onloadedmetadata = () => {
             if (video.videoWidth === 0 || video.videoHeight === 0) {
               showMessage('Video feed not available. Please check your camera.', true);
@@ -158,9 +198,11 @@ function tryStorageQuotaCheck(resolve) {
           };
         } catch (err) {
           showMessage('Camera access denied or unavailable. Please grant camera permissions.', true);
+          document.getElementById('zoomControls').style.display = 'none';
         }
       } catch (err) {
         showMessage('Failed to initialize fingerprinting: ' + err.message, true);
+        document.getElementById('zoomControls').style.display = 'none';
       }
     }
 
@@ -237,6 +279,8 @@ function tryStorageQuotaCheck(resolve) {
         stream = null;
       }
       document.getElementById('video').style.display = 'none';
+      document.getElementById('zoomControls').style.display = 'none';
+      document.getElementById('zoomWarning').style.display = 'none';
     }
   </script>
 </body>
