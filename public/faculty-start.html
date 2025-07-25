@@ -13,6 +13,7 @@
     <!-- Start Attendance -->
     <div class="bg-white p-6 rounded-lg shadow-md mb-6">
       <h2 class="text-xl font-semibold mb-4">Start Attendance</h2>
+      
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div>
           <label for="year" class="block text-sm font-medium text-gray-700">Year</label>
@@ -47,7 +48,11 @@
           </select>
         </div>
       </div>
+      
       <button id="startButton" onclick="startAttendance()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Start Attendance</button>
+      <p class="mt-4">Please adjust QR code size accordingly</p>
+      
+            
       <div id="result" class="mt-4 hidden"></div>
       <div id="qrCode" class="mt-4"></div>
       <div id="qrTimer" class="mt-2 text-gray-700"></div>
@@ -57,6 +62,7 @@
     </div>
 
     <!-- Attended Students -->
+     
     <div id="attendedStudents" class="bg-white p-6 rounded-lg shadow-md mb-6"></div>
 
     <!-- Manual Attendance -->
