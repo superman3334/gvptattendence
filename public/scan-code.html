@@ -68,6 +68,16 @@ function isIncognitoMode() {
         tryStorageQuotaCheck(resolve);
       });
     }
+    function restrictToChrome() {
+  return new Promise(resolve => {
+    const userAgent = navigator.userAgent;
+    const isChrome = /Chrome\/[\d.]+/.test(userAgent) && !/Edge\/[\d.]+|SamsungInternet\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent);
+    const hasChromeObject = typeof window.chrome === 'object' && window.chrome !== null;
+    console.log('Browser:', userAgent);
+    console.log('Is Chrome:', isChrome, 'Has Chrome Object:', hasChromeObject);
+    resolve(isChrome && hasChromeObject);
+  });
+}
 
 function tryStorageQuotaCheck(resolve) {
       try {
@@ -103,6 +113,10 @@ function tryStorageQuotaCheck(resolve) {
         resolve(true);
       }
     }
+    if (!(await restrictToChrome())) {
+    showMessage('Please use Google Chrome to scan the QR code.', true);
+    return;
+  }
     async function startScanner() {
       const rollNumber = document.getElementById('rollNumber').value.trim();
       if (!rollNumber) {
