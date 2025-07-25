@@ -44,13 +44,27 @@
         scanResult.innerHTML = '';
       }, 5000);
     }
-
+function isIncognitoMode() {
+    return new Promise(resolve => {
+      const fs = window.webkitRequestFileSystem || window.requestFileSystem;
+      if (!fs) {
+        // Fallback for older Chrome versions
+        resolve(false);
+        return;
+      }
+      fs(window.TEMPORARY, 100, () => resolve(false), () => resolve(true));
+    });
+  }
     async function startScanner() {
       const rollNumber = document.getElementById('rollNumber').value.trim();
       if (!rollNumber) {
         showMessage('Please enter a valid roll number.', true);
         return;
       }
+      if (await isIncognitoMode()) {
+      showMessage('Incognito mode detected. Please use normal mode in Chrome.', true);
+      return;
+    }
 
       // Generate fingerprint
       try {
