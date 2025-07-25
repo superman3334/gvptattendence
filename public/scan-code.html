@@ -45,16 +45,64 @@
       }, 5000);
     }
 function isIncognitoMode() {
-    return new Promise(resolve => {
-      const fs = window.webkitRequestFileSystem || window.requestFileSystem;
-      if (!fs) {
-        // Fallback for older Chrome versions
-        resolve(false);
-        return;
+      return new Promise(resolve => {
+        console.log('Browser:', navigator.userAgent);
+        if (!navigator.userAgent.includes('Chrome')) {
+          console.log('Non-Chrome browser detected, assuming incognito for safety');
+          resolve(true);
+          return;
+        }
+        // Try FileSystem API
+        const fs = window.webkitRequestFileSystem || window.requestFileSystem;
+        console.log('FileSystem API available:', !!fs);
+        if (fs) {
+          fs(window.TEMPORARY, 100, () => {
+            console.log('FileSystem access granted (normal mode)');
+            tryStorageQuotaCheck(resolve);
+          }, err => {
+            console.log('FileSystem error (likely incognito):', err.name, err.message);
+            resolve(true);
+          });
+          return;
+        }
+        tryStorageQuotaCheck(resolve);
+      });
+    }
+
+function tryStorageQuotaCheck(resolve) {
+      try {
+        // Test sessionStorage persistence (incognito clears per tab)
+        sessionStorage.setItem('incognitoCheck', 'test');
+        const sessionPersists = sessionStorage.getItem('incognitoCheck') === 'test';
+        console.log('sessionStorage persists:', sessionPersists);
+        if (!sessionPersists) {
+          console.log('sessionStorage cleared, likely incognito');
+          resolve(true);
+          return;
+        }
+        // Write 2 MB to localStorage
+        const testData = 'x'.repeat(2 * 1024 * 1024); // 2 MB
+        localStorage.setItem('incognitoTest', testData);
+        localStorage.removeItem('incognitoTest');
+        console.log('localStorage 2MB test passed (normal mode)');
+        // Check storage quota
+        if (navigator.storage && navigator.storage.estimate) {
+          navigator.storage.estimate().then(estimate => {
+            console.log('Storage quota:', estimate.quota || 0, 'bytes');
+            resolve(estimate.quota < 10 * 1024 * 1024); // <10 MB
+          }).catch(err => {
+            console.log('Storage estimate error:', err.message);
+            resolve(false);
+          });
+        } else {
+          console.log('No storage.estimate API, assuming normal mode');
+          resolve(false);
+        }
+      } catch (e) {
+        console.log('localStorage quota exceeded (likely incognito):', e.name, e.message);
+        resolve(true);
       }
-      fs(window.TEMPORARY, 100, () => resolve(false), () => resolve(true));
-    });
-  }
+    }
     async function startScanner() {
       const rollNumber = document.getElementById('rollNumber').value.trim();
       if (!rollNumber) {
