@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Check Attendance</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-  /* Professional Check Attendance Styling - Mobile Optimized */
+<style>
+  /* Professional Check Attendance Styling - Optimized for Both Mobile and Laptop */
   :root {
     --primary-color: #2563eb;
     --primary-hover: #1d4ed8;
@@ -22,6 +22,10 @@
     --transition: all 0.3s ease-in-out;
   }
 
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -33,8 +37,9 @@
   }
 
   .container {
-    max-width: 800px;
+    max-width: 1200px;
     padding: 0 1rem;
+    margin: 0 auto;
   }
 
   h1 {
@@ -43,6 +48,7 @@
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-bottom: 2rem;
     font-size: clamp(1.5rem, 4vw, 2.5rem);
+    text-align: center;
   }
 
   .card {
@@ -52,8 +58,9 @@
     box-shadow: var(--card-shadow);
     transition: var(--transition);
     backdrop-filter: blur(10px);
-    margin: 0 0.5rem;
-    overflow: hidden;
+    margin: 0 0.5rem 2rem 0.5rem;
+    overflow: visible;
+    padding: 2rem;
   }
 
   .card:hover {
@@ -174,7 +181,6 @@
     border: 2px solid #e5e7eb;
     min-height: 48px;
     margin-bottom: 0.75rem;
-    width: 100%;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
@@ -231,18 +237,28 @@
     background: var(--success-color);
   }
 
-  /* Table Styles */
+  /* Table Styles - Optimized for Both Mobile and Desktop */
   .table-responsive {
     border-radius: var(--border-radius);
-    overflow: hidden;
-    box-shadow: var(--card-shadow);
-    margin-top: 1rem;
     background: white;
+    box-shadow: var(--card-shadow);
+    margin-top: 1.5rem;
+    position: relative;
+    /* Mobile-first: Enable horizontal scrolling */
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
 
   .table {
     margin-bottom: 0;
-    font-size: 0.9rem;
+    width: 100%;
+    border-collapse: collapse;
+    /* Mobile-first sizing */
+    font-size: 0.85rem;
+    /* Minimum width for mobile scrolling */
+    min-width: 700px;
   }
 
   .table thead th {
@@ -255,31 +271,31 @@
     letter-spacing: 0.5px;
     padding: 1rem 0.75rem;
     vertical-align: middle;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .table tbody td {
     padding: 0.875rem 0.75rem;
     vertical-align: middle;
-    border-color: #f1f5f9;
-    transition: var(--transition);
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    white-space: nowrap;
+    background: white;
   }
 
   .table tbody tr:hover {
-    background-color: #f8fafc;
-    transform: scale(1.01);
+    background-color: #f8fafc !important;
   }
 
   .table tbody tr:nth-child(even) {
-    background-color: rgba(248, 250, 252, 0.5);
+    background-color: #f9fafb;
   }
 
-  .table-bordered {
-    border: none;
-  }
-
-  .table-bordered td,
-  .table-bordered th {
-    border: 1px solid #e2e8f0;
+  .table tbody tr:nth-child(even):hover {
+    background-color: #f1f5f9 !important;
   }
 
   /* Attendance Results Header */
@@ -315,6 +331,7 @@
     margin-left: 0.5rem;
     margin-right: 0.5rem;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
   }
 
   /* Loading Animation */
@@ -348,23 +365,19 @@
     to { opacity: 1; }
   }
 
-  /* Loading state for results */
-  .loading-results::after {
+  /* Scroll indicator - Hidden by default, shown on mobile */
+  .table-responsive::after {
     content: '';
-    display: block;
-    width: 40px;
-    height: 40px;
-    margin: 2rem auto;
-    border: 3px solid #e5e7eb;
-    border-top-color: var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+    display: none;
   }
 
-  /* Mobile-First Responsive Design */
-  @media (max-width: 576px) {
+  /* === MOBILE STYLES (up to 768px) === */
+  @media (max-width: 768px) {
+    body {
+      padding: 0.5rem 0;
+    }
+
     .container {
-      margin: 0.5rem auto;
       padding: 0 0.5rem;
       max-width: 100%;
     }
@@ -375,8 +388,8 @@
     }
     
     .card {
-      margin: 0;
-      padding: 1.5rem !important;
+      margin: 0 0 1.5rem 0;
+      padding: 1.5rem;
     }
     
     .card h3 {
@@ -401,8 +414,14 @@
       font-size: 1.1rem;
     }
     
+    .btn-secondary {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+    
     .table {
       font-size: 0.8rem;
+      min-width: 600px;
     }
     
     .table thead th {
@@ -415,75 +434,220 @@
     }
     
     .table-responsive {
-      margin-left: -0.5rem;
-      margin-right: -0.5rem;
+      /* Extend to full width on mobile */
+      margin-left: -1.5rem;
+      margin-right: -1.5rem;
       border-radius: 0;
+      /* Enhanced mobile scrolling */
+      -webkit-overflow-scrolling: touch;
+      transform: translate3d(0, 0, 0);
+      overscroll-behavior-x: contain;
+    }
+    
+    /* Show scroll indicator on mobile */
+    .table-responsive::after {
+      content: '← Swipe to scroll →';
+      display: block;
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      color: var(--muted-color);
+      opacity: 0.7;
+      pointer-events: none;
     }
     
     .bottom-buttons {
       padding: 1rem;
       margin: 1.5rem 0 1rem 0;
     }
-    
-    .btn-secondary {
-      margin-bottom: 0.5rem;
+
+    /* Custom scrollbar for mobile */
+    .table-responsive::-webkit-scrollbar {
+      height: 6px;
     }
     
-    .btn-secondary:last-child {
-      margin-bottom: 0;
+    .table-responsive::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 3px;
     }
   }
 
-  /* Tablet Design */
-  @media (min-width: 577px) and (max-width: 768px) {
+  /* === TABLET STYLES (769px to 1024px) === */
+  @media (min-width: 769px) and (max-width: 1024px) {
     .container {
-      max-width: 700px;
+      max-width: 950px;
       padding: 0 1.5rem;
     }
     
     .card {
-      margin: 0 1rem;
+      margin: 0 1rem 2rem 1rem;
+      padding: 2rem;
     }
     
     .table {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
+      min-width: 800px;
+    }
+    
+    .table-responsive {
+      margin-left: -1rem;
+      margin-right: -1rem;
+      -webkit-overflow-scrolling: touch;
     }
     
     .btn-secondary {
       width: calc(50% - 0.375rem);
       margin-right: 0.75rem;
       margin-bottom: 0;
+      display: inline-block;
     }
     
     .btn-secondary:last-child {
       margin-right: 0;
     }
+
+    /* Show scroll indicator if table overflows */
+    .table-responsive::after {
+      content: '← Scroll to see more →';
+      display: block;
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      color: var(--muted-color);
+      opacity: 0.7;
+      pointer-events: none;
+    }
   }
 
-  /* Desktop Design */
-  @media (min-width: 769px) {
-    .btn-secondary {
-      width: auto;
-      margin-bottom: 0;
-    }
-    
-    .table {
-      font-size: 0.9rem;
-    }
-  }
-
-  /* Large screens - better table display */
-  @media (min-width: 992px) {
+  /* === LAPTOP/DESKTOP STYLES (1025px and up) === */
+  @media (min-width: 1025px) {
     .container {
-      max-width: 900px;
+      max-width: 1200px;
+      padding: 0 2rem;
     }
-    
+
+    .card {
+      margin: 0 0 2rem 0;
+      padding: 2.5rem;
+    }
+
+    .card h3 {
+      font-size: 1.5rem;
+    }
+
+    /* Desktop form layout - side by side */
+    .row {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    .col-md-6 {
+      flex: 0 0 auto;
+      width: 50%;
+      max-width: 500px;
+    }
+
+    /* Desktop table - no horizontal scroll needed */
+    .table {
+      font-size: 1rem;
+      min-width: auto;
+      width: 100%;
+    }
+
+    .table-responsive {
+      overflow-x: visible;
+      overflow-y: visible;
+      margin-left: 0;
+      margin-right: 0;
+      /* Remove mobile optimizations */
+      transform: none;
+      -webkit-overflow-scrolling: auto;
+    }
+
     .table thead th {
-      padding: 1rem;
+      padding: 1.25rem 1rem;
+      font-size: 0.9rem;
     }
     
     .table tbody td {
       padding: 1rem;
+      font-size: 0.95rem;
+    }
+
+    /* Desktop button layout */
+    .btn-secondary {
+      width: auto;
+      margin-bottom: 0;
+      margin-right: 1rem;
+      display: inline-block;
+      min-width: 180px;
+    }
+    
+    .btn-secondary:last-child {
+      margin-right: 0;
+    }
+
+    .bottom-buttons {
+      padding: 2rem;
+      margin-top: 2rem;
+      margin-left: 0;
+      margin-right: 0;
+    }
+
+    /* No scroll indicator needed on desktop */
+    .table-responsive::after {
+      display: none;
+    }
+
+    /* Better hover effects on desktop */
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .table tbody tr:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  /* === LARGE DESKTOP STYLES (1440px and up) === */
+  @media (min-width: 1440px) {
+    .container {
+      max-width: 1400px;
+    }
+    
+    .table thead th {
+      padding: 1.5rem 1.2rem;
+      font-size: 1rem;
+    }
+    
+    .table tbody td {
+      padding: 1.2rem;
+      font-size: 1rem;
+    }
+
+    .card {
+      padding: 3rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 3rem;
     }
   }
 
@@ -494,28 +658,10 @@
     outline-offset: 2px;
   }
 
-  /* Performance Optimizations */
-  * {
-    box-sizing: border-box;
-  }
-
-  .card,
-  .btn,
-  .form-control,
-  .table tbody tr {
-    will-change: transform;
-  }
-
-  /* Touch Improvements */
+  /* Touch device optimizations */
   @media (hover: none) and (pointer: coarse) {
-    .btn:hover {
-      transform: none;
-    }
-    
-    .card:hover {
-      transform: none;
-    }
-    
+    .btn:hover,
+    .card:hover,
     .table tbody tr:hover {
       transform: none;
     }
@@ -523,28 +669,15 @@
     .btn:active {
       transform: scale(0.98);
     }
-  }
 
-  /* High DPI Display Optimization */
-  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-    .card,
     .table-responsive {
-      box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.15), 0 1px 4px -1px rgba(0, 0, 0, 0.1);
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+      overscroll-behavior: contain;
     }
   }
 
-  /* Dark Mode Support */
-  @media (prefers-color-scheme: dark) {
-    .form-control {
-      background-color: #f3f4f6;
-    }
-    
-    .table tbody tr:nth-child(even) {
-      background-color: rgba(248, 250, 252, 0.3);
-    }
-  }
-
-  /* Reduced Motion Support */
+  /* Reduced motion support */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -556,6 +689,58 @@
     
     .btn::before {
       display: none;
+    }
+
+    .table-responsive {
+      scroll-behavior: auto;
+    }
+  }
+
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .form-control {
+      background-color: #f3f4f6;
+    }
+    
+    .table tbody tr:nth-child(even) {
+      background-color: rgba(248, 250, 252, 0.3);
+    }
+  }
+
+  /* High DPI optimization */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .card,
+    .table-responsive {
+      box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.15), 0 1px 4px -1px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  /* Loading state */
+  .loading-results::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 40px;
+    margin: 2rem auto;
+    border: 3px solid #e5e7eb;
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  /* Results animation */
+  .results-loaded {
+    animation: slideInUp 0.5s ease-out;
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 
@@ -572,22 +757,6 @@
     display: block;
     margin-bottom: 1rem;
     opacity: 0.5;
-  }
-
-  /* Success animation for results */
-  .results-loaded {
-    animation: slideInUp 0.5s ease-out;
-  }
-
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 </style>
 </head>
