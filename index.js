@@ -67,7 +67,7 @@ const Slot = mongoose.model('Slot', slotSchema);
 
 // Indexes for performance
 studentSchema.index({ year: 1, section: 1 });
-attendanceSchema.index({ rollNumber: 1, slotId: 1 });
+attendanceSchema.index({ rollNumber: 1, slotId: 1 }, { unique: true }); // Ensure unique attendance per rollNumber and slotId
 attendanceSchema.index({ fingerprint: 1, slotId: 1 });
 slotSchema.index({ year: 1, sections: 1, slotNumber: 1, createdAt: 1 });
 
@@ -349,37 +349,50 @@ app.get('/scan/code', (req, res) => {
 });
 
 app.post('/scan/code', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const { rollNumber, qrToken, fingerprint } = req.body;
     if (!rollNumber || !qrToken || !fingerprint) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ error: 'Missing rollNumber, qrToken, or fingerprint' });
     }
     const isChrome = fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
-  const isSafari = fingerprint.includes('Safari/') && !fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
-  const isBlocked = isSafari || fingerprint.match(/Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/);
-  if (!isChrome || isBlocked) {
-    return res.status(400).json({ error: 'Please use Google Chrome.' });
-  }
+    const isSafari = fingerprint.includes('Safari/') && !fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
+    const isBlocked = isSafari || fingerprint.match(/Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/);
+    if (!isChrome || isBlocked) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Please use Google Chrome.' });
+    }
+    console.log('Received Fingerprint:', fingerprint);
     const slot = await Slot.findOne({
       qrToken,
       qrCreatedAt: { $gte: new Date(Date.now() - 15 * 1000) },
       expiresAt: { $gte: new Date() },
       isActive: true
-    });
+    }).session(session);
     if (!slot) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         error: 'Invalid or expired QR code',
         details: 'The QR code is either invalid, older than 15 seconds, or the slot has expired.'
       });
     }
-    const student = await Student.findOne({ rollNumber });
+    const student = await Student.findOne({ rollNumber }).session(session);
     if (!student) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         error: 'Student not found',
         details: `No student found with roll number ${rollNumber}.`
       });
     }
     if (!slot.sections.includes(student.section)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         error: 'Student not in selected section',
         details: `Student ${rollNumber} is not in section(s) ${slot.sections.join(', ')} for this slot.`
@@ -388,8 +401,10 @@ app.post('/scan/code', async (req, res) => {
     const existingDeviceAttendance = await Attendance.findOne({
       fingerprint,
       slotId: slot._id
-    });
+    }).session(session);
     if (existingDeviceAttendance) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         error: 'This device has already marked attendance for this slot',
         details: 'This device has already been used to mark attendance for this slot.'
@@ -398,25 +413,30 @@ app.post('/scan/code', async (req, res) => {
     const existingRollAttendance = await Attendance.findOne({
       rollNumber,
       slotId: slot._id
-    });
+    }).session(session);
     if (existingRollAttendance) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         error: 'Attendance already recorded for this student',
         details: `Attendance for ${rollNumber} has already been recorded for this slot.`
       });
     }
-    await Attendance.create({
+    await Attendance.create([{
       rollNumber,
       slotId: slot._id,
       section: student.section,
       timestamp: new Date(),
       fingerprint
-    });
+    }], { session });
     const newQrToken = uuidv4();
     await Slot.updateOne(
       { _id: slot._id },
-      { qrToken: newQrToken, qrCreatedAt: new Date() }
+      { qrToken: newQrToken, qrCreatedAt: new Date() },
+      { session }
     );
+    await session.commitTransaction();
+    session.endSession();
     res.json({
       message: 'Successfully marked present',
       details: {
@@ -424,14 +444,16 @@ app.post('/scan/code', async (req, res) => {
         slotNumber: slot.slotNumber,
         year: slot.year,
         sections: slot.sections,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date()
       }
     });
   } catch (err) {
-    console.error(err);
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error in /scan/code:', err);
     res.status(500).json({
       error: 'Failed to record attendance',
-      details: 'An unexpected server error occurred.'
+      details: err.code === 11000 ? 'Duplicate attendance detected' : 'An unexpected server error occurred.'
     });
   }
 });
@@ -500,8 +522,8 @@ app.post('/faculty/start-attendance', async (req, res) => {
 
 app.post('/faculty/refresh-qr', async (req, res) => {
   try {
-    const { slotId, facultyId , expiresAt } = req.body;
-    if (!slotId || !facultyId) return res.status(400).json({ error: 'Missing required fields' });
+    const { slotId, facultyId, expiresAt } = req.body;
+    if (!slotId || !facultyId) return res.status(400).jsonევ
     const slot = await Slot.findOne({ _id: slotId, facultyId, isActive: true });
     if (!slot) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
     if (slot.expiresAt < new Date()) {

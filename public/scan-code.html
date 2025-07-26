@@ -68,6 +68,7 @@
 
   <script>
     let stream = null;
+    let isScanning = false;
 
     function showMessage(message, isError = false) {
       const scanResult = document.getElementById('scanResult');
@@ -176,6 +177,7 @@
           navigator.userAgent + '-' +
           window.screen.width + 'x' + window.screen.height + '-' +
           (window.WebGLRenderingContext ? getWebGLFingerprint() : 'no-webgl');
+        console.log('Generated Fingerprint:', fingerprint);
 
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
@@ -195,6 +197,7 @@
               stopScanner();
               return;
             }
+            isScanning = true;
             scanQRCode(rollNumber, fingerprint);
           };
         } catch (err) {
@@ -220,11 +223,13 @@
     }
 
     function scanQRCode(rollNumber, fingerprint) {
+      if (!isScanning) return;
       const video = document.getElementById('video');
       const canvas = document.getElementById('canvas');
       const context = canvas.getContext('2d');
 
       function tick() {
+        if (!isScanning) return;
         if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
           canvas.height = video.videoHeight;
           canvas.width = video.videoWidth;
@@ -232,6 +237,7 @@
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (code) {
+            isScanning = false;
             try {
               const qrToken = new URLSearchParams(code.data.split('?')[1]).get('token');
               if (!qrToken) {
@@ -283,6 +289,7 @@
       document.getElementById('video').style.display = 'none';
       document.getElementById('zoomControls').style.display = 'none';
       document.getElementById('zoomWarning').style.display = 'none';
+      isScanning = false;
     }
   </script>
 </body>
