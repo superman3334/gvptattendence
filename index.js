@@ -509,7 +509,7 @@ app.post('/faculty/start-attendance', async (req, res) => {
       qrToken,
       createdAt: now,
       qrCreatedAt: now,
-      expiresAt: new Date(now.getTime() + 45 * 1000),
+      expiresAt: new Date(now.getTime() + 90 * 1000),
       facultyId
     });
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
@@ -561,7 +561,7 @@ app.post('/faculty/extend-slot', async (req, res) => {
     const slot = await Slot.findOne({ _id: slotId, facultyId });
     if (!slot) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
     const now = new Date();
-    const newExpiresAt = new Date(now.getTime() + 45 * 1000);
+    const newExpiresAt = new Date(now.getTime() + 90 * 1000);
     await Slot.updateOne(
       { _id: slotId },
       { expiresAt: newExpiresAt, isActive: true }
