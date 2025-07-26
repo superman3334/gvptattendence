@@ -6,16 +6,525 @@
   <title>Attendance Success</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
+  /* Professional Success Page Styling - Mobile Optimized */
+  :root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary-color: #64748b;
+    --secondary-hover: #475569;
+    --success-color: #059669;
+    --success-light: #d1fae5;
+    --success-dark: #047857;
+    --light-bg: #f8fafc;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --border-radius: 16px;
+    --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    animation: fadeIn 0.8s ease-in forwards;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Animated background elements */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: float 20s linear infinite;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+    animation: shimmer 3s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+  }
+
+  .success-container {
+    max-width: 600px;
+    margin: auto;
+    padding: 1rem;
+  }
+
+  .card {
+    background: white;
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+    animation: slideInUp 0.8s ease-out 0.2s both;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--success-color), #10b981, var(--success-color));
+    background-size: 200% 100%;
+    animation: gradientMove 3s ease-in-out infinite;
+  }
+
+  .card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px -10px rgba(5, 150, 105, 0.3);
+  }
+
+  /* Success Icon and Title */
+  h1 {
+    color: var(--success-color);
+    font-weight: 700;
+    margin-bottom: 2rem;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    position: relative;
+  }
+
+  .success-icon {
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    color: var(--success-color);
+    display: inline-block;
+    animation: bounce 1s ease-in-out 0.5s both, pulse 2s ease-in-out 1.5s infinite;
+    text-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+    margin-right: 0.5rem;
+  }
+
+  h3 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 2rem;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    position: relative;
+  }
+
+  h3::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--success-color), #10b981);
+    border-radius: 2px;
+  }
+
+  /* Details Section */
+  .card p {
+    margin: 1.5rem 0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border-radius: 12px;
+    border-left: 4px solid var(--success-color);
+    transition: var(--transition);
+    animation: slideInRight 0.6s ease-out calc(var(--delay, 0) * 0.1s) both;
+  }
+
+  .card p:nth-of-type(1) { --delay: 3; }
+  .card p:nth-of-type(2) { --delay: 4; }
+  .card p:nth-of-type(3) { --delay: 5; }
+  .card p:nth-of-type(4) { --delay: 6; }
+  .card p:nth-of-type(5) { --delay: 7; }
+
+  .card p:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+  }
+
+  .card p strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 140px;
+  }
+
+  .card p strong::before {
+    font-size: 1.1em;
+  }
+
+  .card p:nth-of-type(1) strong::before { content: "🎓"; }
+  .card p:nth-of-type(2) strong::before { content: "⏰"; }
+  .card p:nth-of-type(3) strong::before { content: "📅"; }
+  .card p:nth-of-type(4) strong::before { content: "👥"; }
+  .card p:nth-of-type(5) strong::before { content: "📍"; }
+
+  .card p span {
+    color: var(--success-dark);
+    font-weight: 600;
+    background: rgba(5, 150, 105, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.95rem;
+  }
+
+  /* Button Styles */
+  .btn {
+    font-weight: 500;
+    border-radius: 12px;
+    padding: 0.875rem 2rem;
+    transition: var(--transition);
+    border: none;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1.2;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    margin: 0.5rem;
+    min-height: 48px;
+    min-width: 140px;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s;
+  }
+
+  .btn:hover::before {
+    left: 100%;
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, white, #f8fafc);
+    color: var(--secondary-color);
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-secondary:hover, .btn-secondary:active {
+    background: linear-gradient(135deg, var(--secondary-color), var(--secondary-hover));
+    color: white;
+    border-color: var(--secondary-color);
+    transform: translateY(-2px);
+    text-decoration: none;
+    box-shadow: 0 8px 20px rgba(100, 116, 139, 0.4);
+  }
+
+  .mt-4 {
+    margin-top: 2.5rem !important;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+    animation: slideInUp 0.6s ease-out 1s both;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes bounce {
+    0%, 20%, 53%, 80%, 100% {
+      transform: translateY(0);
+    }
+    40%, 43% {
+      transform: translateY(-10px);
+    }
+    70% {
+      transform: translateY(-5px);
+    }
+    90% {
+      transform: translateY(-2px);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+    100% { transform: translate(0, 0) rotate(360deg); }
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes gradientMove {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Mobile-First Responsive Design */
+  @media (max-width: 576px) {
     .success-container {
-      max-width: 600px;
-      margin: auto;
-      padding: 20px;
+      padding: 0.5rem;
+      margin: 1rem auto;
     }
+    
+    .card {
+      padding: 1.5rem !important;
+      margin: 0;
+    }
+    
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+    
     .success-icon {
-      font-size: 3rem;
-      color: #28a745;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      display: block;
     }
-  </style>
+    
+    h3 {
+      font-size: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .card p {
+      flex-direction: column;
+      text-align: left;
+      gap: 0.5rem;
+      padding: 1rem 0.75rem;
+      font-size: 1rem;
+    }
+    
+    .card p strong {
+      min-width: auto;
+      margin-bottom: 0.25rem;
+    }
+    
+    .card p span {
+      align-self: flex-start;
+      font-size: 0.9rem;
+    }
+    
+    .btn {
+      width: 100%;
+      margin: 0.25rem 0;
+      padding: 1rem;
+      font-size: 1rem;
+    }
+    
+    .mt-4 {
+      margin-top: 2rem !important;
+      padding-top: 1.5rem;
+    }
+  }
+
+  /* Tablet Design */
+  @media (min-width: 577px) and (max-width: 768px) {
+    .success-container {
+      padding: 1rem;
+      max-width: 500px;
+    }
+    
+    .card p {
+      padding: 1rem 0.75rem;
+    }
+    
+    .btn {
+      width: calc(50% - 0.5rem);
+      margin: 0.25rem;
+    }
+  }
+
+  /* Desktop Design */
+  @media (min-width: 769px) {
+    .card p {
+      padding: 1.25rem 1rem;
+    }
+    
+    .btn {
+      width: auto;
+      min-width: 160px;
+    }
+  }
+
+  /* Focus Accessibility */
+  .btn:focus {
+    outline: 3px solid rgba(5, 150, 105, 0.5);
+    outline-offset: 2px;
+  }
+
+  /* Performance Optimizations */
+  * {
+    box-sizing: border-box;
+  }
+
+  .card,
+  .btn,
+  .card p {
+    will-change: transform;
+  }
+
+  /* Touch Improvements */
+  @media (hover: none) and (pointer: coarse) {
+    .btn:hover {
+      transform: none;
+    }
+    
+    .card:hover {
+      transform: none;
+    }
+    
+    .card p:hover {
+      transform: none;
+    }
+    
+    .btn:active {
+      transform: scale(0.98);
+    }
+  }
+
+  /* High DPI Display Optimization */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .card {
+      box-shadow: 0 8px 20px -5px rgba(0, 0, 0, 0.15), 0 8px 8px -5px rgba(0, 0, 0, 0.08);
+    }
+    
+    .success-icon {
+      text-shadow: 0 2px 4px rgba(5, 150, 105, 0.4);
+    }
+  }
+
+  /* Reduced Motion Support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    
+    .btn::before,
+    body::before,
+    body::after {
+      display: none;
+    }
+  }
+
+  /* Print Styles */
+  @media print {
+    body {
+      background: white !important;
+    }
+    
+    body::before,
+    body::after {
+      display: none !important;
+    }
+    
+    .card {
+      box-shadow: none !important;
+      border: 1px solid #ddd !important;
+    }
+    
+    .btn {
+      display: none !important;
+    }
+  }
+
+  /* Success celebration effect */
+  .celebration {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .celebration::before {
+    content: '🎉✨🎊✨🎉';
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    animation: celebrate 3s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes celebrate {
+    0%, 100% { opacity: 0; transform: translateX(-50%) translateY(0); }
+    50% { opacity: 1; transform: translateX(-50%) translateY(-20px); }
+  }
+</style>
 </head>
 <body class="bg-light">
   <div class="container my-5">
