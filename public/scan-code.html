@@ -78,13 +78,14 @@
     }
 
     function restrictToChrome() {
-      return new Promise(resolve => {
+      return new Promise(async resolve => {
         const userAgent = navigator.userAgent;
         const isChrome = /Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
         const isSafari = userAgent.includes('Safari/') && !/Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
-        const isBlocked = isSafari || /Edge\/[\d.]+|Brave\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent);
+        const isBrave = navigator.brave && await navigator.brave.isBrave();
+        const isBlocked = isSafari || /Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent) || isBrave;
         console.log('Browser:', userAgent);
-        console.log('Is Chrome:', isChrome, 'Is Safari:', isSafari, 'Is Blocked:', isBlocked);
+        console.log('Is Chrome:', isChrome, 'Is Safari:', isSafari, 'Is Brave:', isBrave, 'Is Blocked:', isBlocked);
         resolve(isChrome && !isBlocked);
       });
     }
@@ -198,11 +199,11 @@
           };
         } catch (err) {
           showMessage('Camera access denied or unavailable. Please grant camera permissions.', true);
-          document.getElementById('zoomControls').style.display = 'none';
+          stopScanner();
         }
       } catch (err) {
         showMessage('Failed to initialize fingerprinting: ' + err.message, true);
-        document.getElementById('zoomControls').style.display = 'none';
+        stopScanner();
       }
     }
 
@@ -239,12 +240,9 @@
                 return;
               }
               submitAttendance(rollNumber, qrToken, fingerprint);
-              stopScanner();
-              return;
             } catch (e) {
               showMessage('Failed to parse QR code.', true);
               stopScanner();
-              return;
             }
           }
         } else if (video.readyState !== video.HAVE_ENOUGH_DATA) {
@@ -265,11 +263,15 @@
         const data = await response.json();
         if (data.error) {
           showMessage(`${data.error}: ${data.details || ''}`, true);
+          stopScanner();
           return;
         }
-        showMessage(`Attendance marked successfully for ${data.details.rollNumber} (Slot ${data.details.slotNumber}, Year ${data.details.year}, Section ${data.details.sections.join(', ')}) at ${data.details.timestamp}`);
+        stopScanner();
+        document.getElementById('rollNumber').value = '';
+        window.location.href = `/success.html?rollNumber=${encodeURIComponent(data.details.rollNumber)}&slotNumber=${data.details.slotNumber}&year=${data.details.year}&sections=${encodeURIComponent(data.details.sections.join(', '))}&timestamp=${encodeURIComponent(new Date(data.details.timestamp).toLocaleString())}`;
       } catch (err) {
         showMessage('Failed to submit attendance: Network error.', true);
+        stopScanner();
       }
     }
 

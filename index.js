@@ -354,6 +354,12 @@ app.post('/scan/code', async (req, res) => {
     if (!rollNumber || !qrToken || !fingerprint) {
       return res.status(400).json({ error: 'Missing rollNumber, qrToken, or fingerprint' });
     }
+    const isChrome = fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
+  const isSafari = fingerprint.includes('Safari/') && !fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
+  const isBlocked = isSafari || fingerprint.match(/Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/);
+  if (!isChrome || isBlocked) {
+    return res.status(400).json({ error: 'Please use Google Chrome.' });
+  }
     const slot = await Slot.findOne({
       qrToken,
       qrCreatedAt: { $gte: new Date(Date.now() - 15 * 1000) },

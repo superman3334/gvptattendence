@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Success</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .success-container {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+    .success-icon {
+      font-size: 3rem;
+      color: #28a745;
+    }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container my-5">
+    <div class="success-container">
+      <div class="card p-4 shadow-sm text-center">
+        <h1 class="text-success mb-4"><span class="success-icon">✔</span> Attendance Marked Successfully</h1>
+        <h3 class="mb-3">Attendance Details</h3>
+        <p><strong>Roll Number:</strong> <span id="rollNumber"></span></p>
+        <p><strong>Slot Number:</strong> <span id="slotNumber"></span></p>
+        <p><strong>Year:</strong> <span id="year"></span></p>
+        <p><strong>Section:</strong> <span id="sections"></span></p>
+        <p><strong>Timestamp:</strong> <span id="timestamp"></span></p>
+        <div class="mt-4">
+          
+          <a href="/check-attendance" class="btn btn-secondary mx-2">Check Attendance</a>
+          <a href="/" class="btn btn-secondary mx-2">Back to Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function displayAttendanceDetails() {
+      const params = new URLSearchParams(window.location.search);
+      document.getElementById('rollNumber').textContent = params.get('rollNumber') || 'N/A';
+      document.getElementById('slotNumber').textContent = params.get('slotNumber') || 'N/A';
+      document.getElementById('year').textContent = params.get('year') || 'N/A';
+      document.getElementById('sections').textContent = params.get('sections') || 'N/A';
+      document.getElementById('timestamp').textContent = params.get('timestamp') || 'N/A';
+    }
+
+    window.onload = displayAttendanceDetails;
+  </script>
+</body>
+</html>
