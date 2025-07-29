@@ -110,7 +110,7 @@ async function processPendingAttendance() {
     const slotId = slot._id.toString();
     const pendingKey = `slot:${slotId}:pending`;
     let pending = [];
-    const batchLimit = 20; // Limit to 20 records per batch
+    const batchLimit = 25; // Limit to 20 records per batch
     while (pending.length < batchLimit && (record = await redis.lpop(pendingKey))) {
       pending.push(JSON.parse(record));
     }
@@ -127,7 +127,7 @@ async function processPendingAttendance() {
     }
   }
 }
-setInterval(processPendingAttendance, 10000); // Increase to 10 seconds
+setInterval(processPendingAttendance, 7000); // Increase to 10 seconds
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
