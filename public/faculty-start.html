@@ -52,17 +52,15 @@
       <button id="startButton" onclick="startAttendance()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Start Attendance</button>
       <p class="mt-4">Please adjust QR code size accordingly</p>
       
-            
       <div id="result" class="mt-4 hidden"></div>
       <div id="qrCode" class="mt-4"></div>
       <div id="qrTimer" class="mt-2 text-gray-700"></div>
       <div id="slotTimer" class="mt-2 text-gray-700"></div>
       <button id="stopButton" onclick="stopSlot()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mt-4 hidden">Stop Slot</button>
-      <button id="extendButton" onclick="extendSlot()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mt-4 hidden">Extend Slot (45s)</button>
+      <button id="extendButton" onclick="extendSlot()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mt-4 hidden">Extend Slot (180s)</button>
     </div>
 
     <!-- Attended Students -->
-     
     <div id="attendedStudents" class="bg-white p-6 rounded-lg shadow-md mb-6"></div>
 
     <!-- Manual Attendance -->
@@ -158,26 +156,28 @@
       }
 
       // Update Timers
- function updateTimers() {
-    if (!slotExpiresAt) return;
-    const now = new Date().getTime();
-    const expiresAt = new Date(slotExpiresAt).getTime();
-    const qrTimeLeft = 15 - Math.floor((now % 15000) / 1000);
-    const slotTimeLeft = Math.floor((expiresAt - now) / 1000);
-    
-    if (slotTimeLeft <= 0) {
-      clearInterval(qrTimerInterval);
-      clearInterval(slotTimerInterval);
-      document.getElementById('slotTimer').textContent = 'Slot expired';
-      document.getElementById('qrCode').innerHTML = '';
-      document.getElementById('startButton').classList.remove('hidden');
-      document.getElementById('stopButton').classList.add('hidden');
-      document.getElementById('extendButton').classList.remove('hidden');
-      stopPolling();
-      return;
-    }
-    document.getElementById('slotTimer').textContent = `Slot expires in ${slotTimeLeft} seconds`;
-  }
+      function updateTimers() {
+        if (!slotExpiresAt) return;
+        const now = new Date().getTime();
+        const expiresAt = new Date(slotExpiresAt).getTime();
+        const qrTimeLeft = 30 - Math.floor((now % 30000) / 1000);
+        const slotTimeLeft = Math.floor((expiresAt - now) / 1000);
+        
+        if (slotTimeLeft <= 0) {
+          clearInterval(qrTimerInterval);
+          clearInterval(slotTimerInterval);
+          document.getElementById('slotTimer').textContent = 'Slot expired';
+          document.getElementById('qrCode').innerHTML = '';
+          document.getElementById('startButton').classList.remove('hidden');
+          document.getElementById('stopButton').classList.add('hidden');
+          document.getElementById('extendButton').classList.remove('hidden');
+          stopPolling();
+          return;
+        }
+       
+        document.getElementById('slotTimer').textContent = `Slot expires in ${slotTimeLeft} seconds`;
+      }
+
       // Start Timers
       function startTimers(expiresAt) {
         slotExpiresAt = expiresAt;
@@ -200,33 +200,33 @@
           showMessage('result', 'Please select year, at least one section, and slot number.', true);
           return;
         }
-       try {
-      const response = await fetch('/faculty/start-attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, sections, slotNumber, facultyId })
-      });
-      const data = await response.json();
-      if (data.error) {
-        showMessage('result', data.error, true);
-        return;
-      }
-      currentSlotId = data.slotId;
-      lastSlotId = data.slotId;
-      document.getElementById('manualSlotId').value = currentSlotId;
-      showMessage('result', `Slot taken successfully. Slot ID: ${currentSlotId}`);
-      document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
-      document.getElementById('startButton').classList.add('hidden');
-      document.getElementById('stopButton').classList.remove('hidden');
-      document.getElementById('extendButton').classList.add('hidden');
-      updateAttendedStudents(data.attendedStudents || []);
-      startTimers(data.slotExpiresAt);
-      startPolling();
-      // Schedule 5 additional QR refreshes (6 total: 0s, 15s, 30s, 45s, 60s, 75s)
-      for (let i = 1; i <= 5; i++) {
-        setTimeout(refreshQRCode, i * 15000);
-      }
-    } catch (err) {
+        try {
+          const response = await fetch('/faculty/start-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ year, sections, slotNumber, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            return;
+          }
+          currentSlotId = data.slotId;
+          lastSlotId = data.slotId;
+          document.getElementById('manualSlotId').value = currentSlotId;
+          showMessage('result', `Slot taken successfully. Slot ID: ${currentSlotId}`);
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          document.getElementById('startButton').classList.add('hidden');
+          document.getElementById('stopButton').classList.remove('hidden');
+          document.getElementById('extendButton').classList.remove('hidden');
+          updateAttendedStudents(data.attendedStudents || []);
+          startTimers(data.slotExpiresAt);
+          startPolling();
+          // Schedule 3 additional QR refreshes (4 total: 0s, 30s, 60s, 90s for 120s slot)
+          for (let i = 1; i <= 3; i++) {
+            setTimeout(refreshQRCode, i * 30000);
+          }
+        } catch (err) {
           showMessage('result', 'Failed to start attendance: ' + err.message, true);
         }
       }
@@ -246,7 +246,7 @@
           } catch (err) {
             showMessage('result', 'Failed to fetch attended students: ' + err.message, true);
           }
-        }, 5000);
+        }, 10000); // 10s polling
       }
 
       function stopPolling() {
@@ -257,69 +257,68 @@
       }
 
       // Refresh QR Code
+      async function refreshQRCode() {
+        if (!currentSlotId) return;
+        try {
+          const response = await fetch('/faculty/refresh-qr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: currentSlotId, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            document.getElementById('qrCode').innerHTML = '';
+            document.getElementById('startButton').classList.remove('hidden');
+            document.getElementById('stopButton').classList.add('hidden');
+            document.getElementById('extendButton').classList.remove('hidden');
+            clearInterval(qrTimerInterval);
+            clearInterval(slotTimerInterval);
+            document.getElementById('qrTimer').textContent = '';
+            document.getElementById('slotTimer').textContent = 'Slot expired';
+            slotExpiresAt = null;
+            stopPolling();
+            updateAttendedStudents(data.attendedStudents || []);
+            return;
+          }
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          slotExpiresAt = data.slotExpiresAt;
+          updateAttendedStudents(data.attendedStudents || []);
+        } catch (err) {
+          showMessage('result', 'Failed to refresh QR code: ' + err.message, true);
+        }
+      }
 
-  // Line ~256: Simplify refreshQRCode to align with 15-second intervals
-  async function refreshQRCode() {
-    if (!currentSlotId) return;
-    try {
-      const response = await fetch('/faculty/refresh-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slotId: currentSlotId, facultyId })
-      });
-      const data = await response.json();
-      if (data.error) {
-        showMessage('result', data.error, true);
-        document.getElementById('qrCode').innerHTML = '';
-        document.getElementById('startButton').classList.remove('hidden');
-        document.getElementById('stopButton').classList.add('hidden');
-        document.getElementById('extendButton').classList.remove('hidden');
-        clearInterval(qrTimerInterval);
-        clearInterval(slotTimerInterval);
-        document.getElementById('qrTimer').textContent = '';
-        document.getElementById('slotTimer').textContent = 'Slot expired';
-        slotExpiresAt = null;
-        stopPolling();
-        updateAttendedStudents(data.attendedStudents || []);
-        return;
-      }
-      document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
-      slotExpiresAt = data.slotExpiresAt;
-      updateAttendedStudents(data.attendedStudents || []);
-    } catch (err) {
-      showMessage('result', 'Failed to refresh QR code: ' + err.message, true);
-    }
-  }
       // Extend Slot
-  async function extendSlot() {
-    if (!currentSlotId) return;
-    try {
-      const response = await fetch('/faculty/extend-slot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slotId: currentSlotId, facultyId })
-      });
-      const data = await response.json();
-      if (data.error) {
-        showMessage('result', data.error, true);
-        return;
+      async function extendSlot() {
+        if (!currentSlotId) return;
+        try {
+          const response = await fetch('/faculty/extend-slot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slotId: currentSlotId, facultyId })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage('result', data.error, true);
+            return;
+          }
+          showMessage('result', 'Slot extended to 180 seconds');
+          document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
+          document.getElementById('startButton').classList.add('hidden');
+          document.getElementById('stopButton').classList.remove('hidden');
+          document.getElementById('extendButton').classList.add('hidden');
+          slotExpiresAt = data.slotExpiresAt;
+          startTimers(data.slotExpiresAt);
+          startPolling();
+          // Schedule 5 additional QR refreshes (6 total: 0s, 30s, 60s, 90s, 120s, 150s for 180s slot)
+          for (let i = 1; i <= 5; i++) {
+            setTimeout(refreshQRCode, i * 30000);
+          }
+        } catch (err) {
+          showMessage('result', 'Failed to extend slot: ' + err.message, true);
+        }
       }
-      showMessage('result', 'Slot extended by 90 seconds');
-      document.getElementById('qrCode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto w-64 h-64">`;
-      document.getElementById('startButton').classList.add('hidden');
-      document.getElementById('stopButton').classList.remove('hidden');
-      document.getElementById('extendButton').classList.add('hidden');
-      slotExpiresAt = data.slotExpiresAt;
-      startTimers(data.slotExpiresAt);
-      startPolling();
-      // Schedule 5 additional QR refreshes (6 total: 0s, 15s, 30s, 45s, 60s, 75s)
-      for (let i = 1; i <= 5; i++) {
-        setTimeout(refreshQRCode, i * 15000);
-      }
-    } catch (err) {
-      showMessage('result', 'Failed to extend slot: ' + err.message, true);
-    }
-  }
 
       // Stop Slot
       async function stopSlot() {

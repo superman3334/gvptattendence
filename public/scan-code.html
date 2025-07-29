@@ -607,16 +607,21 @@
       }, 5000);
     }
 
-    function restrictToChrome() {
+    function randomDelay() {
+      return new Promise(resolve => {
+        const delay = Math.floor(Math.random() * 200); // 0–200ms
+        setTimeout(resolve, delay);
+      });
+    }
+ function restrictToChrome() {
       return new Promise(async resolve => {
         const userAgent = navigator.userAgent;
-        const isChrome = /Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
-        const isSafari = userAgent.includes('Safari/') && !/Chrome\/[\d.]+|CriOS\/[\d.]+/.test(userAgent);
+        const isChrome = userAgent.includes('Chrome') || userAgent.includes('CriOS');
+        const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome') && !userAgent.includes('CriOS');
+        const isEdge = userAgent.includes('Edg/');
         const isBrave = navigator.brave && await navigator.brave.isBrave();
-        const isBlocked = isSafari || /Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/.test(userAgent) || isBrave;
-        console.log('Browser:', userAgent);
-        console.log('Is Chrome:', isChrome, 'Is Safari:', isSafari, 'Is Brave:', isBrave, 'Is Blocked:', isBlocked);
-        resolve(isChrome && !isBlocked);
+        console.log('Browser:', userAgent, 'Is Chrome/CriOS:', isChrome, 'Is Safari:', isSafari, 'Is Edge:', isEdge, 'Is Brave:', isBrave);
+        resolve(isChrome && !isSafari && !isEdge && !isBrave);
       });
     }
 
@@ -689,13 +694,20 @@
     }
 
     async function startScanner() {
+      if (isScanning) return;
+      isScanning = true;
+      document.getElementById('video').parentElement.classList.add('camera-loading');
       const rollNumber = document.getElementById('rollNumber').value.trim();
       if (!rollNumber) {
         showMessage('Please enter a valid roll number.', true);
+        isScanning = false;
+        document.getElementById('video').parentElement.classList.remove('camera-loading');
         return;
       }
       if (!(await restrictToChrome())) {
-        showMessage('Please use Google Chrome to scan the QR code.', true);
+        showMessage('Please use Google Chrome on a non-iOS device.', true);
+        isScanning = false;
+        document.getElementById('video').parentElement.classList.remove('camera-loading');
         return;
       }
 
@@ -719,6 +731,8 @@
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
           video.srcObject = stream;
           video.play();
+          document.getElementById('video').parentElement.classList.remove('camera-loading');
+          document.getElementById('video').parentElement.classList.add('scanning');
           setupZoomControls(video, canvas, stream.getVideoTracks()[0]);
           video.onloadedmetadata = () => {
             if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -726,15 +740,17 @@
               stopScanner();
               return;
             }
-            isScanning = true;
             scanQRCode(rollNumber, fingerprint);
           };
         } catch (err) {
           showMessage('Camera access denied or unavailable. Please grant camera permissions.', true);
+          document.getElementById('video').parentElement.classList.remove('camera-loading');
+          document.getElementById('video').parentElement.classList.add('camera-denied');
           stopScanner();
         }
       } catch (err) {
         showMessage('Failed to initialize fingerprinting: ' + err.message, true);
+        document.getElementById('video').parentElement.classList.remove('camera-loading');
         stopScanner();
       }
     }
@@ -764,9 +780,12 @@
           canvas.width = video.videoWidth;
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert' // Relax QR detection for blurred/distant scans
+          });
           if (code) {
             isScanning = false;
+            document.getElementById('video').parentElement.classList.add('qr-detected');
             try {
               const qrToken = new URLSearchParams(code.data.split('?')[1]).get('token');
               if (!qrToken) {
@@ -789,24 +808,37 @@
     }
 
     async function submitAttendance(rollNumber, qrToken, fingerprint) {
-      try {
-        const response = await fetch('/scan/code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rollNumber, qrToken, fingerprint })
-        });
-        const data = await response.json();
-        if (data.error) {
-          showMessage(`${data.error}: ${data.details || ''}`, true);
+      const maxAttempts = 3;
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        try {
+          await randomDelay(); // 0–200ms delay
+          const response = await fetch('/scan/code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rollNumber, qrToken, fingerprint })
+          });
+          const data = await response.json();
+          if (data.error) {
+            showMessage(`${data.error}${data.details ? ': ' + data.details : ''}`, true);
+            stopScanner();
+            return;
+          }
           stopScanner();
+          document.getElementById('rollNumber').value = '';
+          window.location.href = data.redirect || '/success.html';
           return;
+        } catch (err) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            console.log(`Retry attempt ${attempts + 1} for rollNumber ${rollNumber}`);
+            await new Promise(resolve => setTimeout(resolve, 200 * Math.pow(2, attempts)));
+            continue;
+          }
+          showMessage('Failed to submit attendance: Network error after retries.', true);
+          stopScanner();
         }
-        stopScanner();
-        document.getElementById('rollNumber').value = '';
-        window.location.href = `/success.html?rollNumber=${encodeURIComponent(data.details.rollNumber)}&slotNumber=${data.details.slotNumber}&year=${data.details.year}&sections=${encodeURIComponent(data.details.sections.join(', '))}&timestamp=${encodeURIComponent(new Date(data.details.timestamp).toLocaleString())}`;
-      } catch (err) {
-        showMessage('Failed to submit attendance: Network error.', true);
-        stopScanner();
       }
     }
 
@@ -816,6 +848,7 @@
         stream = null;
       }
       document.getElementById('video').style.display = 'none';
+      document.getElementById('video').parentElement.classList.remove('scanning', 'qr-detected', 'camera-denied');
       document.getElementById('zoomControls').style.display = 'none';
       document.getElementById('zoomWarning').style.display = 'none';
       isScanning = false;

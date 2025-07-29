@@ -7,8 +7,28 @@ const qrcode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const ExcelJS = require('exceljs');
+const Redis = require('ioredis');
 const app = express();
 
+let redis;
+try {
+  redis = new Redis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: 20,
+    connectTimeout: 10000, // 10s timeout
+    retryStrategy(times) {
+      const delay = Math.min(times * 100, 2000); // Exponential backoff
+      console.log(`Retrying Redis connection (${times}/20) after ${delay}ms`);
+      return delay;
+    }
+  });
+  redis.on('error', err => console.error('Redis error:', err.message));
+  redis.on('connect', () => console.log('Redis connected'));
+  redis.on('ready', () => console.log('Redis ready'));
+  redis.on('close', () => console.log('Redis connection closed'));
+} catch (err) {
+  console.error('Failed to initialize Redis:', err.message);
+  process.exit(1);
+}
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(fileUpload());
@@ -67,10 +87,35 @@ const Slot = mongoose.model('Slot', slotSchema);
 
 // Indexes for performance
 studentSchema.index({ year: 1, section: 1 });
-attendanceSchema.index({ rollNumber: 1, slotId: 1 }, { unique: true }); // Ensure unique attendance per rollNumber and slotId
+attendanceSchema.index({ rollNumber: 1, slotId: 1 }, { unique: true });
 attendanceSchema.index({ fingerprint: 1, slotId: 1 });
 slotSchema.index({ year: 1, sections: 1, slotNumber: 1, createdAt: 1 });
 
+async function processPendingAttendance() {
+  const slots = await Slot.find({ isActive: true });
+  for (const slot of slots) {
+    const slotId = slot._id.toString();
+    const pendingKey = `slot:${slotId}:pending`;
+    let pending = [];
+    let record;
+    while ((record = await redis.lpop(pendingKey))) {
+      pending.push(JSON.parse(record));
+    }
+    if (pending.length > 0) {
+      try {
+        await Attendance.insertMany(pending, { ordered: false });
+        console.log(`Batch inserted ${pending.length} attendance records for slot ${slotId}`);
+      } catch (err) {
+        console.error(`Batch insert failed for slot ${slotId}:`, err);
+        // Re-queue failed records
+        for (const rec of pending) {
+          await redis.rpush(pendingKey, JSON.stringify(rec));
+        }
+      }
+    }
+  }
+}
+setInterval(processPendingAttendance, 5000);
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -349,115 +394,57 @@ app.get('/scan/code', (req, res) => {
 });
 
 app.post('/scan/code', async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { rollNumber, qrToken, fingerprint } = req.body;
+  const userAgent = req.headers['user-agent'];
+  if (!userAgent.includes('Chrome')  || userAgent.includes('Edge') || userAgent.includes('Safari')) {
+    return res.status(403).json({ error: 'Please use Google Chrome on a non-iOS device' });
+  }
+  if (!rollNumber || !qrToken || !fingerprint) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
   try {
-    const { rollNumber, qrToken, fingerprint } = req.body;
-    if (!rollNumber || !qrToken || !fingerprint) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: 'Missing rollNumber, qrToken, or fingerprint' });
+    // Validate qrToken in Redis
+    const [slotId, storedQrToken] = await redis.mget(`slot:${qrToken}:id`, `slot:${qrToken}:qrToken`);
+    if (!slotId || storedQrToken !== qrToken) {
+      return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-    const isChrome = fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
-    const isSafari = fingerprint.includes('Safari/') && !fingerprint.match(/Chrome\/[\d.]+|CriOS\/[\d.]+/);
-    const isBlocked = isSafari || fingerprint.match(/Edge\/[\d.]+|EdgA\/[\d.]+|UCBrowser\/[\d.]+/);
-    if (!isChrome || isBlocked) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ error: 'Please use Google Chrome.' });
+    // Check slot status in MongoDB
+    const slot = await Slot.findOne({ _id: slotId, isActive: true });
+    if (!slot || slot.expiresAt < new Date()) {
+      await redis.del(`slot:${slotId}:qrToken`, `slot:${qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
+      return res.status(400).json({ error: 'Slot expired' });
     }
-    console.log('Received Fingerprint:', fingerprint);
-    const slot = await Slot.findOne({
-      qrToken,
-      qrCreatedAt: { $gte: new Date(Date.now() - 15 * 1000) },
-      expiresAt: { $gte: new Date() },
-      isActive: true
-    }).session(session);
-    if (!slot) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        error: 'Invalid or expired QR code',
-        details: 'The QR code is either invalid, older than 15 seconds, or the slot has expired.'
-      });
+    // Validate student
+    const student = await Student.findOne({ rollNumber });
+    if (!student || !slot.sections.includes(student.section) || student.year !== slot.year) {
+      return res.status(400).json({ error: 'Student not found or not in selected section/year' });
     }
-    const student = await Student.findOne({ rollNumber }).session(session);
-    if (!student) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        error: 'Student not found',
-        details: `No student found with roll number ${rollNumber}.`
-      });
+    // Check duplicates in Redis
+    const rollNumberExists = await redis.sismember(`slot:${slotId}:rollNumbers`, rollNumber);
+    if (rollNumberExists) {
+      return res.status(400).json({ error: 'Attendance already marked' });
     }
-    if (!slot.sections.includes(student.section)) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        error: 'Student not in selected section',
-        details: `Student ${rollNumber} is not in section(s) ${slot.sections.join(', ')} for this slot.`
-      });
+    const fingerprintExists = await redis.sismember(`slot:${slotId}:fingerprints`, fingerprint);
+    if (fingerprintExists) {
+      return res.status(400).json({ error: 'Duplicate device detected' });
     }
-    const existingDeviceAttendance = await Attendance.findOne({
-      fingerprint,
-      slotId: slot._id
-    }).session(session);
-    if (existingDeviceAttendance) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        error: 'This device has already marked attendance for this slot',
-        details: 'This device has already been used to mark attendance for this slot.'
-      });
-    }
-    const existingRollAttendance = await Attendance.findOne({
+    // Queue attendance in Redis
+    const attendanceRecord = {
       rollNumber,
-      slotId: slot._id
-    }).session(session);
-    if (existingRollAttendance) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        error: 'Attendance already recorded for this student',
-        details: `Attendance for ${rollNumber} has already been recorded for this slot.`
-      });
-    }
-    await Attendance.create([{
-      rollNumber,
-      slotId: slot._id,
+      slotId,
       section: student.section,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       fingerprint
-    }], { session });
-    const newQrToken = uuidv4();
-    await Slot.updateOne(
-      { _id: slot._id },
-      { qrToken: newQrToken, qrCreatedAt: new Date() },
-      { session }
-    );
-    await session.commitTransaction();
-    session.endSession();
-    res.json({
-      message: 'Successfully marked present',
-      details: {
-        rollNumber,
-        slotNumber: slot.slotNumber,
-        year: slot.year,
-        sections: slot.sections,
-        timestamp: new Date()
-      }
-    });
+    };
+    await redis.rpush(`slot:${slotId}:pending`, JSON.stringify(attendanceRecord));
+    await redis.sadd(`slot:${slotId}:rollNumbers`, rollNumber);
+    await redis.sadd(`slot:${slotId}:fingerprints`, fingerprint);
+    res.json({ message: 'Successfully marked present', redirect: '/success.html' });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
     console.error('Error in /scan/code:', err);
-    res.status(500).json({
-      error: 'Failed to record attendance',
-      details: err.code === 11000 ? 'Duplicate attendance detected' : 'An unexpected server error occurred.'
-    });
+    res.status(500).json({ error: 'Failed to mark attendance: ' + err.message });
   }
 });
-
 app.post('/faculty/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -475,7 +462,6 @@ app.post('/faculty/login', async (req, res) => {
 app.get('/faculty/start-attendance', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'faculty-start.html'));
 });
-
 app.post('/faculty/start-attendance', async (req, res) => {
   try {
     const { year, sections, slotNumber, facultyId } = req.body;
@@ -509,9 +495,12 @@ app.post('/faculty/start-attendance', async (req, res) => {
       qrToken,
       createdAt: now,
       qrCreatedAt: now,
-      expiresAt: new Date(now.getTime() + 90 * 1000),
+      expiresAt: new Date(now.getTime() + 120 * 1000), // 120s slot
       facultyId
     });
+    // Store qrToken in Redis
+    await redis.set(`slot:${slot._id}:qrToken`, qrToken, 'EX', 30); // 30s TTL
+    await redis.set(`slot:${qrToken}:id`, slot._id.toString(), 'EX', 30);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     res.json({ qrCode, slotId: slot._id, slotExpiresAt: slot.expiresAt, attendedStudents: [] });
   } catch (err) {
@@ -522,12 +511,13 @@ app.post('/faculty/start-attendance', async (req, res) => {
 
 app.post('/faculty/refresh-qr', async (req, res) => {
   try {
-    const { slotId, facultyId, expiresAt } = req.body;
-    if (!slotId || !facultyId) return res.status(400).jsonევ
+    const { slotId, facultyId } = req.body;
+    if (!slotId || !facultyId) return res.status(400).json({ error: 'Missing required fields' });
     const slot = await Slot.findOne({ _id: slotId, facultyId, isActive: true });
     if (!slot) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
     if (slot.expiresAt < new Date()) {
       await Slot.updateOne({ _id: slotId }, { isActive: false });
+      await redis.del(`slot:${slotId}:qrToken`, `slot:${slot.qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
       const attendedStudents = await Attendance.find({ slotId }).lean();
       for (let record of attendedStudents) {
         const student = await Student.findOne({ rollNumber: record.rollNumber });
@@ -539,6 +529,8 @@ app.post('/faculty/refresh-qr', async (req, res) => {
     }
     const qrToken = uuidv4();
     await Slot.updateOne({ _id: slotId }, { qrToken, qrCreatedAt: new Date() });
+    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30); // 30s TTL
+    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 30);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
     for (let record of attendedStudents) {
@@ -554,20 +546,31 @@ app.post('/faculty/refresh-qr', async (req, res) => {
   }
 });
 
+
+
 app.post('/faculty/extend-slot', async (req, res) => {
   try {
     const { slotId, facultyId } = req.body;
     if (!slotId || !facultyId) return res.status(400).json({ error: 'Missing required fields' });
     const slot = await Slot.findOne({ _id: slotId, facultyId });
-    if (!slot) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
+    if (!slot || !slot.isActive) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
     const now = new Date();
-    const newExpiresAt = new Date(now.getTime() + 90 * 1000);
+    const currentExpiresAt = new Date(slot.expiresAt);
+    if (currentExpiresAt >= new Date(now.getTime() + 180 * 1000)) {
+      return res.status(400).json({ error: 'Slot already extended to maximum duration (180s)' });
+    }
+    const newExpiresAt = new Date(now.getTime() + 180 * 1000); // Extend to 180s
     await Slot.updateOne(
       { _id: slotId },
       { expiresAt: newExpiresAt, isActive: true }
     );
+    await redis.expire(`slot:${slotId}:rollNumbers`, 180);
+    await redis.expire(`slot:${slotId}:fingerprints`, 180);
+    await redis.expire(`slot:${slotId}:pending`, 180);
     const qrToken = uuidv4();
     await Slot.updateOne({ _id: slotId }, { qrToken, qrCreatedAt: now });
+    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30);
+    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 30);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
     for (let record of attendedStudents) {
@@ -576,12 +579,13 @@ app.post('/faculty/extend-slot', async (req, res) => {
       record.section = student ? student.section : 'N/A';
       record.timestamp = record.timestamp ? new Date(record.timestamp).toLocaleString() : 'N/A';
     }
-    res.json({ qrCode, slotExpiresAt: newExpiresAt, attendedStudents, message: 'Slot extended by 45 seconds' });
+    res.json({ qrCode, slotExpiresAt: newExpiresAt, attendedStudents, message: 'Slot extended to 180 seconds' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to extend slot' });
   }
 });
+
 
 app.post('/faculty/stop-slot', async (req, res) => {
   try {
