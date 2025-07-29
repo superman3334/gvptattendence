@@ -14,9 +14,9 @@ let redis;
 try {
   redis = new Redis(process.env.REDIS_URL, {
     maxRetriesPerRequest: 20,
-    connectTimeout: 10000, // 10s timeout
+    connectTimeout: 10000,
     retryStrategy(times) {
-      const delay = Math.min(times * 100, 2000); // Exponential backoff
+      const delay = Math.min(times * 100, 2000);
       console.log(`Retrying Redis connection (${times}/20) after ${delay}ms`);
       return delay;
     }
@@ -29,7 +29,7 @@ try {
   console.error('Failed to initialize Redis:', err.message);
   process.exit(1);
 }
-// Middleware
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(fileUpload());
 app.use(express.json());
@@ -38,7 +38,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Server error' });
 });
 
-// MongoDB Atlas Connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -47,7 +46,6 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1);
 });
 
-// Schemas
 const studentSchema = new mongoose.Schema({
   rollNumber: { type: String, unique: true },
   name: String,
@@ -85,7 +83,6 @@ const slotSchema = new mongoose.Schema({
 });
 const Slot = mongoose.model('Slot', slotSchema);
 
-// Indexes for performance
 studentSchema.index({ year: 1, section: 1 });
 attendanceSchema.index({ rollNumber: 1, slotId: 1 }, { unique: true });
 attendanceSchema.index({ fingerprint: 1, slotId: 1 });
@@ -107,7 +104,6 @@ async function processPendingAttendance() {
         console.log(`Batch inserted ${pending.length} attendance records for slot ${slotId}`);
       } catch (err) {
         console.error(`Batch insert failed for slot ${slotId}:`, err);
-        // Re-queue failed records
         for (const rec of pending) {
           await redis.rpush(pendingKey, JSON.stringify(rec));
         }
@@ -116,7 +112,7 @@ async function processPendingAttendance() {
   }
 }
 setInterval(processPendingAttendance, 5000);
-// Routes
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -170,7 +166,7 @@ app.post('/admin/upload-sheet', async (req, res) => {
       return res.status(400).json({ error: 'Excel must have columns: rollNumber, name, year, section' });
     }
     worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return; // Skip header
+      if (rowNumber === 1) return;
       const rowData = row.values;
       const rollNumber = rowData[header.indexOf('rollNumber')]?.toString()?.trim();
       const name = rowData[header.indexOf('name')]?.toString()?.trim();
@@ -396,30 +392,26 @@ app.get('/scan/code', (req, res) => {
 app.post('/scan/code', async (req, res) => {
   const { rollNumber, qrToken, fingerprint } = req.body;
   const userAgent = req.headers['user-agent'];
-  if (!userAgent.includes('Chrome')  || userAgent.includes('Edge') || userAgent.includes('Safari')) {
-    return res.status(403).json({ error: 'Please use Google Chrome on a non-iOS device' });
+  if (!(userAgent.includes('Chrome') || userAgent.includes('CriOS')) || userAgent.includes('Edge') || (userAgent.includes('Safari') && !userAgent.includes('CriOS'))) {
+    return res.status(403).json({ error: 'Please use Google Chrome' });
   }
   if (!rollNumber || !qrToken || !fingerprint) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   try {
-    // Validate qrToken in Redis
     const [slotId, storedQrToken] = await redis.mget(`slot:${qrToken}:id`, `slot:${qrToken}:qrToken`);
     if (!slotId || storedQrToken !== qrToken) {
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-    // Check slot status in MongoDB
     const slot = await Slot.findOne({ _id: slotId, isActive: true });
     if (!slot || slot.expiresAt < new Date()) {
       await redis.del(`slot:${slotId}:qrToken`, `slot:${qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
       return res.status(400).json({ error: 'Slot expired' });
     }
-    // Validate student
     const student = await Student.findOne({ rollNumber });
     if (!student || !slot.sections.includes(student.section) || student.year !== slot.year) {
       return res.status(400).json({ error: 'Student not found or not in selected section/year' });
     }
-    // Check duplicates in Redis
     const rollNumberExists = await redis.sismember(`slot:${slotId}:rollNumbers`, rollNumber);
     if (rollNumberExists) {
       return res.status(400).json({ error: 'Attendance already marked' });
@@ -428,7 +420,6 @@ app.post('/scan/code', async (req, res) => {
     if (fingerprintExists) {
       return res.status(400).json({ error: 'Duplicate device detected' });
     }
-    // Queue attendance in Redis
     const attendanceRecord = {
       rollNumber,
       slotId,
@@ -445,6 +436,7 @@ app.post('/scan/code', async (req, res) => {
     res.status(500).json({ error: 'Failed to mark attendance: ' + err.message });
   }
 });
+
 app.post('/faculty/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -462,6 +454,7 @@ app.post('/faculty/login', async (req, res) => {
 app.get('/faculty/start-attendance', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'faculty-start.html'));
 });
+
 app.post('/faculty/start-attendance', async (req, res) => {
   try {
     const { year, sections, slotNumber, facultyId } = req.body;
@@ -495,11 +488,10 @@ app.post('/faculty/start-attendance', async (req, res) => {
       qrToken,
       createdAt: now,
       qrCreatedAt: now,
-      expiresAt: new Date(now.getTime() + 120 * 1000), // 120s slot
+      expiresAt: new Date(now.getTime() + 120 * 1000),
       facultyId
     });
-    // Store qrToken in Redis
-    await redis.set(`slot:${slot._id}:qrToken`, qrToken, 'EX', 30); // 30s TTL
+    await redis.set(`slot:${slot._id}:qrToken`, qrToken, 'EX', 30);
     await redis.set(`slot:${qrToken}:id`, slot._id.toString(), 'EX', 30);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     res.json({ qrCode, slotId: slot._id, slotExpiresAt: slot.expiresAt, attendedStudents: [] });
@@ -529,7 +521,7 @@ app.post('/faculty/refresh-qr', async (req, res) => {
     }
     const qrToken = uuidv4();
     await Slot.updateOne({ _id: slotId }, { qrToken, qrCreatedAt: new Date() });
-    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30); // 30s TTL
+    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30);
     await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 30);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
@@ -546,8 +538,6 @@ app.post('/faculty/refresh-qr', async (req, res) => {
   }
 });
 
-
-
 app.post('/faculty/extend-slot', async (req, res) => {
   try {
     const { slotId, facultyId } = req.body;
@@ -559,7 +549,7 @@ app.post('/faculty/extend-slot', async (req, res) => {
     if (currentExpiresAt >= new Date(now.getTime() + 180 * 1000)) {
       return res.status(400).json({ error: 'Slot already extended to maximum duration (180s)' });
     }
-    const newExpiresAt = new Date(now.getTime() + 180 * 1000); // Extend to 180s
+    const newExpiresAt = new Date(now.getTime() + 180 * 1000);
     await Slot.updateOne(
       { _id: slotId },
       { expiresAt: newExpiresAt, isActive: true }
@@ -585,7 +575,6 @@ app.post('/faculty/extend-slot', async (req, res) => {
     res.status(500).json({ error: 'Failed to extend slot' });
   }
 });
-
 
 app.post('/faculty/stop-slot', async (req, res) => {
   try {
@@ -805,7 +794,7 @@ app.get('/faculty/download-slot-attendance', async (req, res) => {
     for (let record of attendance) {
       const student = await Student.findOne({ rollNumber: record.rollNumber });
       worksheet.addRow({
-        rollNumber: record.rollNumber,
+        rollNumber: rollNumber,
         name: student ? student.name : 'N/A',
         section: record.section || 'N/A',
         timestamp: new Date(record.timestamp).toLocaleString(),
@@ -981,7 +970,6 @@ app.get('/admin/download-attendance', async (req, res) => {
   }
 });
 
-// Start Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

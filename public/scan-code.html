@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3.3.3/dist/fp.min.js"></script>
 <style>
-  /* Professional QR Scanner Styling - Mobile Optimized */
   :root {
     --primary-color: #2563eb;
     --primary-hover: #1d4ed8;
@@ -109,7 +108,6 @@
     color: #9ca3af;
   }
 
-  /* Video Container Styles */
   .video-container {
     overflow: hidden;
     position: relative;
@@ -149,7 +147,6 @@
     display: none;
   }
 
-  /* Button Styles */
   .btn {
     font-weight: 500;
     border-radius: var(--border-radius);
@@ -229,7 +226,6 @@
     min-height: 36px;
   }
 
-  /* Zoom Controls */
   #zoomControls {
     display: none;
     margin-top: 10px;
@@ -255,7 +251,6 @@
     margin-top: 0.5rem;
   }
 
-  /* Alert Styles */
   .alert {
     border-radius: var(--border-radius);
     border: none;
@@ -304,7 +299,6 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
-  /* Loading Animation */
   .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -340,7 +334,6 @@
     50% { opacity: 0.5; }
   }
 
-  /* Scanning Animation */
   .scanning .video-container::after {
     content: '';
     position: absolute;
@@ -358,7 +351,6 @@
     100% { left: 100%; }
   }
 
-  /* Mobile-First Responsive Design */
   @media (max-width: 576px) {
     .container {
       margin: 0.5rem auto;
@@ -383,7 +375,7 @@
     
     .form-control {
       padding: 1rem;
-      font-size: 16px; /* Prevents zoom on iOS */
+      font-size: 16px;
     }
     
     .video-container {
@@ -427,7 +419,6 @@
     }
   }
 
-  /* Tablet Design */
   @media (min-width: 577px) and (max-width: 768px) {
     .container {
       max-width: 600px;
@@ -453,7 +444,6 @@
     }
   }
 
-  /* Desktop Design */
   @media (min-width: 769px) {
     .btn-secondary {
       width: auto;
@@ -465,14 +455,12 @@
     }
   }
 
-  /* Focus Accessibility */
   .btn:focus,
   .form-control:focus {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
   }
 
-  /* Performance Optimizations */
   * {
     box-sizing: border-box;
   }
@@ -484,7 +472,6 @@
     will-change: transform;
   }
 
-  /* Touch Improvements */
   @media (hover: none) and (pointer: coarse) {
     .btn:hover {
       transform: none;
@@ -499,7 +486,6 @@
     }
   }
 
-  /* High DPI Display Optimization */
   @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     .card {
       box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.15), 0 1px 4px -1px rgba(0, 0, 0, 0.1);
@@ -510,7 +496,6 @@
     }
   }
 
-  /* Dark Mode Support */
   @media (prefers-color-scheme: dark) {
     .form-control {
       background-color: #f3f4f6;
@@ -522,7 +507,6 @@
     }
   }
 
-  /* Reduced Motion Support */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -537,7 +521,6 @@
     }
   }
 
-  /* Camera Permission States */
   .camera-loading .video-container::before {
     content: "📷 Requesting camera access...";
     font-size: 1rem;
@@ -550,7 +533,6 @@
     color: var(--danger-color);
   }
 
-  /* QR Code Detected Animation */
   .qr-detected .video-container {
     border-color: var(--success-color);
     box-shadow: 0 0 20px rgba(5, 150, 105, 0.5);
@@ -609,11 +591,12 @@
 
     function randomDelay() {
       return new Promise(resolve => {
-        const delay = Math.floor(Math.random() * 200); // 0–200ms
+        const delay = Math.floor(Math.random() * 200);
         setTimeout(resolve, delay);
       });
     }
- function restrictToChrome() {
+
+    function restrictToChrome() {
       return new Promise(async resolve => {
         const userAgent = navigator.userAgent;
         const isChrome = userAgent.includes('Chrome') || userAgent.includes('CriOS');
@@ -705,7 +688,7 @@
         return;
       }
       if (!(await restrictToChrome())) {
-        showMessage('Please use Google Chrome on a non-iOS device.', true);
+        showMessage('Please use Google Chrome.', true);
         isScanning = false;
         document.getElementById('video').parentElement.classList.remove('camera-loading');
         return;
@@ -781,7 +764,7 @@
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert' // Relax QR detection for blurred/distant scans
+            inversionAttempts: 'dontInvert'
           });
           if (code) {
             isScanning = false;
@@ -813,7 +796,7 @@
 
       while (attempts < maxAttempts) {
         try {
-          await randomDelay(); // 0–200ms delay
+          await randomDelay();
           const response = await fetch('/scan/code', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
