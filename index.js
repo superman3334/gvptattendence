@@ -96,7 +96,7 @@ async function executeWithRetry(operation, maxRetries = 3) {
     } catch (err) {
       if (err.code === 112 && attempt < maxRetries) { // WriteConflict
         console.log(`Retrying operation (attempt ${attempt}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+        await new Promise(resolve => setTimeout(resolve, 200 * attempt));
         continue;
       }
       throw err;
