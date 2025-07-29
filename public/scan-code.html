@@ -785,51 +785,54 @@
       requestAnimationFrame(tick);
     }
 
-    async function submitAttendance(rollNumber, qrToken, fingerprint) {
-      const maxAttempts = 3;
-      let attempts = 0;
+async function submitAttendance(rollNumber, qrToken, fingerprint) {
+  const maxAttempts = 3;
+  let attempts = 0;
+  // Random delay between 0–10 seconds to stagger requests
+  const staggerDelay = Math.random() * 10000;
+  await new Promise(resolve => setTimeout(resolve, staggerDelay));
+  console.log(`Submitting attendance for ${rollNumber} after ${staggerDelay.toFixed(0)}ms delay`);
 
-      while (attempts < maxAttempts) {
-        try {
-          await randomDelay();
-          const response = await fetch('/scan/code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rollNumber, qrToken, fingerprint })
-          });
-          const data = await response.json();
-          if (data.error) {
-            if (data.error.includes('Invalid or expired QR code')) {
-              showMessage('QR code expired. Please scan the latest QR code.', true);
-              isScanning = true;
-              document.getElementById('video').parentElement.classList.remove('qr-detected');
-              scanQRCode(rollNumber, fingerprint);
-              return;
-            }
-            showMessage(`${data.error}${data.details ? ': ' + data.details : ''}`, true);
-            stopScanner();
-            return;
-          }
-          stopScanner();
-          document.getElementById('rollNumber').value = '';
-          showMessage('Attendance marked successfully!', false);
-          setTimeout(() => {
-            window.location.href = data.redirect || '/success.html';
-          }, 1000);
+  while (attempts < maxAttempts) {
+    try {
+      await randomDelay(); // Existing 0–200ms delay
+      const response = await fetch('/scan/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rollNumber, qrToken, fingerprint })
+      });
+      const data = await response.json();
+      if (data.error) {
+        if (data.error.includes('Invalid or expired QR code')) {
+          showMessage('QR code expired. Scanning for new QR code...', true);
+          isScanning = true;
+          document.getElementById('video').parentElement.classList.remove('qr-detected');
+          scanQRCode(rollNumber, fingerprint);
           return;
-        } catch (err) {
-          attempts++;
-          if (attempts < maxAttempts) {
-            console.log(`Retry attempt ${attempts + 1} for rollNumber ${rollNumber}`);
-            await new Promise(resolve => setTimeout(resolve, 200 * Math.pow(2, attempts)));
-            continue;
-          }
-          showMessage('Failed to submit attendance: Network error after retries.', true);
-          stopScanner();
         }
+        showMessage(`${data.error}${data.details ? ': ' + data.details : ''}`, true);
+        stopScanner();
+        return;
       }
+      stopScanner();
+      document.getElementById('rollNumber').value = '';
+      showMessage('Attendance marked successfully!', false);
+      setTimeout(() => {
+        window.location.href = data.redirect || '/success.html';
+      }, 1000);
+      return;
+    } catch (err) {
+      attempts++;
+      if (attempts < maxAttempts) {
+        console.log(`Retry attempt ${attempts + 1} for rollNumber ${rollNumber}`);
+        await new Promise(resolve => setTimeout(resolve, 200 * Math.pow(2, attempts)));
+        continue;
+      }
+      showMessage('Failed to submit attendance: Network error after retries.', true);
+      stopScanner();
     }
-
+  }
+}
     function stopScanner() {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());

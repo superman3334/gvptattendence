@@ -14,7 +14,7 @@ const app = express();
 let redis;
 try {
   redis = new Redis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: 20,
+    maxRetriesPerRequest: null,
     connectTimeout: 10000,
     retryStrategy(times) {
       const delay = Math.min(times * 100, 2000);
@@ -424,14 +424,14 @@ app.post('/scan/code', async (req, res) => {
       console.log('Rejected: Invalid or expired QR code (no slotId)');
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-    const slot = await Slot.findOne({ _id: slotId, isActive: true });
+    const slot = await Slot.findOne({ _id: slotId, isActive: true }).lean();
     console.log('Slot lookup:', { slotId, slot: slot ? { _id: slot._id, qrToken: slot.qrToken, expiresAt: slot.expiresAt } : null }); // Debug log
     if (!slot || slot.qrToken !== qrToken || slot.expiresAt < new Date()) {
       console.log('Rejected: Invalid or expired slot');
       await redis.del(`slot:${slotId}:qrToken`, `slot:${qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-    const student = await Student.findOne({ rollNumber });
+    const student = await Student.findOne({ rollNumber }).lean();
     console.log('Student lookup:', { rollNumber, student: student ? { rollNumber: student.rollNumber, section: student.section, year: student.year } : null }); // Debug log
     if (!student || !slot.sections.includes(student.section) || student.year !== slot.year) {
       console.log('Rejected: Student validation failed');
