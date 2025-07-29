@@ -41,12 +41,13 @@ app.use((err, req, res, next) => {
 
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  maxPoolSize: 10, // Limit to 10 connections
+  minPoolSize: 2
 }).catch(err => {
   console.error('MongoDB connection error:', err);
   process.exit(1);
 });
-
 const studentSchema = new mongoose.Schema({
   rollNumber: { type: String, unique: true },
   name: String,
@@ -88,31 +89,45 @@ studentSchema.index({ year: 1, section: 1 });
 attendanceSchema.index({ rollNumber: 1, slotId: 1 }, { unique: true });
 attendanceSchema.index({ fingerprint: 1, slotId: 1 });
 slotSchema.index({ year: 1, sections: 1, slotNumber: 1, createdAt: 1 });
+async function executeWithRetry(operation, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      if (err.code === 112 && attempt < maxRetries) { // WriteConflict
+        console.log(`Retrying operation (attempt ${attempt}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
 
 async function processPendingAttendance() {
-  const slots = await Slot.find({ isActive: true });
+  const slots = await Slot.find({ isActive: true }).lean();
   for (const slot of slots) {
     const slotId = slot._id.toString();
     const pendingKey = `slot:${slotId}:pending`;
     let pending = [];
-    let record;
-    while ((record = await redis.lpop(pendingKey))) {
+    const batchLimit = 20; // Limit to 20 records per batch
+    while (pending.length < batchLimit && (record = await redis.lpop(pendingKey))) {
       pending.push(JSON.parse(record));
     }
     if (pending.length > 0) {
-      try {
+      await executeWithRetry(async () => {
         await Attendance.insertMany(pending, { ordered: false });
         console.log(`Batch inserted ${pending.length} attendance records for slot ${slotId}`);
-      } catch (err) {
+      }).catch(err => {
         console.error(`Batch insert failed for slot ${slotId}:`, err);
         for (const rec of pending) {
-          await redis.rpush(pendingKey, JSON.stringify(rec));
+          redis.rpush(pendingKey, JSON.stringify(rec));
         }
-      }
+      });
     }
   }
 }
-setInterval(processPendingAttendance, 5000);
+setInterval(processPendingAttendance, 10000); // Increase to 10 seconds
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
