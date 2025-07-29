@@ -546,17 +546,49 @@
     </div>
   </div>
 
-  <script>
-    function displayAttendanceDetails() {
-      const params = new URLSearchParams(window.location.search);
-      document.getElementById('rollNumber').textContent = params.get('rollNumber') || 'N/A';
-      document.getElementById('slotNumber').textContent = params.get('slotNumber') || 'N/A';
-      document.getElementById('year').textContent = params.get('year') || 'N/A';
-      document.getElementById('sections').textContent = params.get('sections') || 'N/A';
-      document.getElementById('timestamp').textContent = params.get('timestamp') || 'N/A';
+<script>
+  function displayAttendanceDetails() {
+    const params = new URLSearchParams(window.location.search);
+    const fields = {
+      rollNumber: params.get('rollNumber'),
+      slotNumber: params.get('slotNumber'),
+      year: params.get('year'),
+      sections: params.get('sections'),
+      timestamp: params.get('timestamp'),
+    };
+
+    console.log('Query parameters:', Object.fromEntries(params)); // Debug log
+
+    // Check if all fields are missing
+    const allMissing = Object.values(fields).every(value => !value);
+    if (allMissing) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-danger mt-3';
+      errorDiv.textContent = 'No attendance details provided. Please scan the QR code again or contact support.';
+      document.querySelector('.card').appendChild(errorDiv);
+      return;
     }
 
-    window.onload = displayAttendanceDetails;
-  </script>
+    // Populate fields, default to 'N/A' if missing
+    for (const [id, value] of Object.entries(fields)) {
+      document.getElementById(id).textContent = value || 'N/A';
+    }
+
+    // Format timestamp if present
+    if (fields.timestamp) {
+      try {
+        const date = new Date(fields.timestamp);
+        document.getElementById('timestamp').textContent = date.toLocaleString('en-US', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        });
+      } catch (e) {
+        console.error('Invalid timestamp format:', fields.timestamp);
+      }
+    }
+  }
+
+  window.onload = displayAttendanceDetails;
+</script>
 </body>
 </html>

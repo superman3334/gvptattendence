@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -392,32 +393,45 @@ app.get('/scan/code', (req, res) => {
 app.post('/scan/code', async (req, res) => {
   const { rollNumber, qrToken, fingerprint } = req.body;
   const userAgent = req.headers['user-agent'];
-  if (!(userAgent.includes('Chrome') || userAgent.includes('CriOS')) || userAgent.includes('Edge') || (userAgent.includes('Safari') && !userAgent.includes('CriOS'))) {
+  console.log('Received /scan/code request:', { rollNumber, qrToken, fingerprint, userAgent }); // Debug log
+  if (!userAgent.includes('Chrome') && !userAgent.includes('CriOS')) {
+    console.log('Rejected: Non-Chrome browser');
     return res.status(403).json({ error: 'Please use Google Chrome' });
   }
   if (!rollNumber || !qrToken || !fingerprint) {
+    console.log('Rejected: Missing required fields');
     return res.status(400).json({ error: 'Missing required fields' });
   }
   try {
-    const [slotId, storedQrToken] = await redis.mget(`slot:${qrToken}:id`, `slot:${qrToken}:qrToken`);
-    if (!slotId || storedQrToken !== qrToken) {
+    const slotId = await redis.get(`slot:${qrToken}:id`);
+    console.log('Redis slotId lookup:', { qrToken, slotId }); // Debug log
+    if (!slotId) {
+      console.log('Rejected: Invalid or expired QR code (no slotId)');
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
     const slot = await Slot.findOne({ _id: slotId, isActive: true });
-    if (!slot || slot.expiresAt < new Date()) {
+    console.log('Slot lookup:', { slotId, slot: slot ? { _id: slot._id, qrToken: slot.qrToken, expiresAt: slot.expiresAt } : null }); // Debug log
+    if (!slot || slot.qrToken !== qrToken || slot.expiresAt < new Date()) {
+      console.log('Rejected: Invalid or expired slot');
       await redis.del(`slot:${slotId}:qrToken`, `slot:${qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
-      return res.status(400).json({ error: 'Slot expired' });
+      return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
     const student = await Student.findOne({ rollNumber });
+    console.log('Student lookup:', { rollNumber, student: student ? { rollNumber: student.rollNumber, section: student.section, year: student.year } : null }); // Debug log
     if (!student || !slot.sections.includes(student.section) || student.year !== slot.year) {
+      console.log('Rejected: Student validation failed');
       return res.status(400).json({ error: 'Student not found or not in selected section/year' });
     }
     const rollNumberExists = await redis.sismember(`slot:${slotId}:rollNumbers`, rollNumber);
+    console.log('Roll number check:', { rollNumber, exists: rollNumberExists }); // Debug log
     if (rollNumberExists) {
+      console.log('Rejected: Attendance already marked');
       return res.status(400).json({ error: 'Attendance already marked' });
     }
     const fingerprintExists = await redis.sismember(`slot:${slotId}:fingerprints`, fingerprint);
+    console.log('Fingerprint check:', { fingerprint, exists: fingerprintExists }); // Debug log
     if (fingerprintExists) {
+      console.log('Rejected: Duplicate device detected');
       return res.status(400).json({ error: 'Duplicate device detected' });
     }
     const attendanceRecord = {
@@ -427,10 +441,13 @@ app.post('/scan/code', async (req, res) => {
       timestamp: new Date().toISOString(),
       fingerprint
     };
+    console.log('Recording attendance:', attendanceRecord); // Debug log
     await redis.rpush(`slot:${slotId}:pending`, JSON.stringify(attendanceRecord));
     await redis.sadd(`slot:${slotId}:rollNumbers`, rollNumber);
     await redis.sadd(`slot:${slotId}:fingerprints`, fingerprint);
-    res.json({ message: 'Successfully marked present', redirect: '/success.html' });
+    const redirectUrl = `/success.html?rollNumber=${encodeURIComponent(rollNumber)}&slotNumber=${encodeURIComponent(slot.slotNumber)}&year=${encodeURIComponent(student.year)}&sections=${encodeURIComponent(student.section)}&timestamp=${encodeURIComponent(attendanceRecord.timestamp)}`;
+    console.log('Redirecting to:', redirectUrl); // Debug log
+    res.json({ message: 'Successfully marked present', redirect: redirectUrl });
   } catch (err) {
     console.error('Error in /scan/code:', err);
     res.status(500).json({ error: 'Failed to mark attendance: ' + err.message });
@@ -491,8 +508,8 @@ app.post('/faculty/start-attendance', async (req, res) => {
       expiresAt: new Date(now.getTime() + 120 * 1000),
       facultyId
     });
-    await redis.set(`slot:${slot._id}:qrToken`, qrToken, 'EX', 30);
-    await redis.set(`slot:${qrToken}:id`, slot._id.toString(), 'EX', 30);
+    await redis.set(`slot:${slot._id}:qrToken`, qrToken, 'EX', 120);
+    await redis.set(`slot:${qrToken}:id`, slot._id.toString(), 'EX', 120);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     res.json({ qrCode, slotId: slot._id, slotExpiresAt: slot.expiresAt, attendedStudents: [] });
   } catch (err) {
@@ -519,10 +536,14 @@ app.post('/faculty/refresh-qr', async (req, res) => {
       }
       return res.json({ error: 'Slot expired', attendedStudents });
     }
+    const oldQrToken = slot.qrToken;
+    if (oldQrToken) {
+      await redis.del(`slot:${oldQrToken}:id`);
+    }
     const qrToken = uuidv4();
     await Slot.updateOne({ _id: slotId }, { qrToken, qrCreatedAt: new Date() });
-    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30);
-    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 30);
+    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', Math.ceil((slot.expiresAt - new Date()) / 1000));
+    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', Math.ceil((slot.expiresAt - new Date()) / 1000));
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
     for (let record of attendedStudents) {
@@ -557,10 +578,14 @@ app.post('/faculty/extend-slot', async (req, res) => {
     await redis.expire(`slot:${slotId}:rollNumbers`, 180);
     await redis.expire(`slot:${slotId}:fingerprints`, 180);
     await redis.expire(`slot:${slotId}:pending`, 180);
+    const oldQrToken = slot.qrToken;
+    if (oldQrToken) {
+      await redis.del(`slot:${oldQrToken}:id`);
+    }
     const qrToken = uuidv4();
     await Slot.updateOne({ _id: slotId }, { qrToken, qrCreatedAt: now });
-    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 30);
-    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 30);
+    await redis.set(`slot:${slotId}:qrToken`, qrToken, 'EX', 180);
+    await redis.set(`slot:${qrToken}:id`, slotId, 'EX', 180);
     const qrCode = await qrcode.toDataURL(`${process.env.BASE_URL}/scan/code?token=${qrToken}`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
     for (let record of attendedStudents) {
@@ -583,6 +608,7 @@ app.post('/faculty/stop-slot', async (req, res) => {
     const slot = await Slot.findOne({ _id: slotId, facultyId });
     if (!slot) return res.status(400).json({ error: 'Invalid slot or unauthorized' });
     await Slot.updateOne({ _id: slotId }, { isActive: false });
+    await redis.del(`slot:${slotId}:qrToken`, `slot:${slot.qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
     const attendedStudents = await Attendance.find({ slotId }).lean();
     for (let record of attendedStudents) {
       const student = await Student.findOne({ rollNumber: record.rollNumber });
@@ -794,7 +820,7 @@ app.get('/faculty/download-slot-attendance', async (req, res) => {
     for (let record of attendance) {
       const student = await Student.findOne({ rollNumber: record.rollNumber });
       worksheet.addRow({
-        rollNumber: rollNumber,
+        rollNumber: record.rollNumber,
         name: student ? student.name : 'N/A',
         section: record.section || 'N/A',
         timestamp: new Date(record.timestamp).toLocaleString(),

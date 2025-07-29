@@ -256,7 +256,7 @@
     border: none;
     font-weight: 500;
     padding: 1rem;
-    margin-top: 1rem;
+    margin: 1rem 0;
     position: relative;
     overflow: hidden;
   }
@@ -597,14 +597,11 @@
     }
 
     function restrictToChrome() {
-      return new Promise(async resolve => {
+      return new Promise(resolve => {
         const userAgent = navigator.userAgent;
         const isChrome = userAgent.includes('Chrome') || userAgent.includes('CriOS');
-        const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome') && !userAgent.includes('CriOS');
-        const isEdge = userAgent.includes('Edg/');
-        const isBrave = navigator.brave && await navigator.brave.isBrave();
-        console.log('Browser:', userAgent, 'Is Chrome/CriOS:', isChrome, 'Is Safari:', isSafari, 'Is Edge:', isEdge, 'Is Brave:', isBrave);
-        resolve(isChrome && !isSafari && !isEdge && !isBrave);
+        console.log('Browser:', userAgent, 'Is Chrome/CriOS:', isChrome);
+        resolve(isChrome);
       });
     }
 
@@ -696,11 +693,8 @@
 
       try {
         const fp = await FingerprintJS.load();
-        const result = await fp.get({ extendedResult: true });
-        const fingerprint = result.visitorId + '-' +
-          navigator.userAgent + '-' +
-          window.screen.width + 'x' + window.screen.height + '-' +
-          (window.WebGLRenderingContext ? getWebGLFingerprint() : 'no-webgl');
+        const result = await fp.get();
+        const fingerprint = result.visitorId;
         console.log('Generated Fingerprint:', fingerprint);
 
         const video = document.getElementById('video');
@@ -770,15 +764,16 @@
             isScanning = false;
             document.getElementById('video').parentElement.classList.add('qr-detected');
             try {
-              const qrToken = new URLSearchParams(code.data.split('?')[1]).get('token');
+              const url = new URL(code.data);
+              const qrToken = url.searchParams.get('token');
               if (!qrToken) {
-                showMessage('Invalid QR code format.', true);
+                showMessage('Invalid QR code format: Missing token.', true);
                 stopScanner();
                 return;
               }
               submitAttendance(rollNumber, qrToken, fingerprint);
             } catch (e) {
-              showMessage('Failed to parse QR code.', true);
+              showMessage('Failed to parse QR code: Invalid URL format.', true);
               stopScanner();
             }
           }
@@ -804,13 +799,23 @@
           });
           const data = await response.json();
           if (data.error) {
+            if (data.error.includes('Invalid or expired QR code')) {
+              showMessage('QR code expired. Please scan the latest QR code.', true);
+              isScanning = true;
+              document.getElementById('video').parentElement.classList.remove('qr-detected');
+              scanQRCode(rollNumber, fingerprint);
+              return;
+            }
             showMessage(`${data.error}${data.details ? ': ' + data.details : ''}`, true);
             stopScanner();
             return;
           }
           stopScanner();
           document.getElementById('rollNumber').value = '';
-          window.location.href = data.redirect || '/success.html';
+          showMessage('Attendance marked successfully!', false);
+          setTimeout(() => {
+            window.location.href = data.redirect || '/success.html';
+          }, 1000);
           return;
         } catch (err) {
           attempts++;
