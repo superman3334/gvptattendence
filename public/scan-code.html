@@ -544,6 +544,37 @@
     50% { transform: scale(1.02); }
     100% { transform: scale(1); }
   }
+  .feedback-container {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      padding: 16px 24px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin: 30px auto;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .feedback-container p {
+      color: #6c757d; /* muted text */
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .feedback-container a {
+      display: inline-block;
+      background-color: #007bff;
+      color: white;
+      text-decoration: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .feedback-container a:hover {
+      background-color: #0056b3;
+    }
 </style>
 </head>
 <body class="bg-light">
@@ -556,11 +587,11 @@
           <div class="mb-3">
             <label for="rollNumber" class="form-label">Roll Number</label>
             <input type="text" class="form-control" id="rollNumber" placeholder="e.g., CS101">
-            <p>
+            
 
 
-"Added delay, try continuously until done."
-</p>
+           
+            
           </div>
           <div class="mb-3 text-center video-container">
             <video id="video" class="border rounded" style="display: none;"></video>
@@ -579,7 +610,15 @@
     <div class="text-center mt-4">
       <a href="/" class="btn btn-secondary">Back to Login</a>
       <a href="/check-attendance" class="btn btn-secondary">Check Attendance</a>
+   
+     
     </div>
+
+  <div class="feedback-container">
+    <p class="text-muted">If you face any issues, please fill out the  form.</p>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLSeAY68UBoQTvVaDml3TxpVNOS8vqcRcZ9I1S8LMNMyDvJDGRw/viewform?usp=header" target="_blank">
+      click here to fill out the form
+    </a>
   </div>
 
   <script>
