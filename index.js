@@ -408,12 +408,13 @@ app.post('/scan/code', async (req, res) => {
   const { rollNumber, qrToken, fingerprint } = req.body;
   const userAgent = req.headers['user-agent'];
   console.log('Received /scan/code request:', { rollNumber, qrToken, fingerprint, userAgent });
-  // Allow Chrome on Android (Chrome/ and Android) or Chrome on iOS (CriOS/)
-  const isAndroidChrome = userAgent.includes('Chrome/') && userAgent.includes('Android');
-  const isIosChrome = userAgent.includes('CriOS/');
-  if (!isAndroidChrome && !isIosChrome) {
-    console.log('Rejected: Non-Chrome browser or unsupported platform');
-    return res.status(403).json({ error: 'Please use Google Chrome on an Android or iOS device' });
+  if (!userAgent.includes('Chrome') && !userAgent.includes('CriOS')) {
+    console.log('Rejected: Non-Chrome browser');
+    return res.status(403).json({ error: 'Please use Google Chrome on your iPhone or Android device' });
+  }
+  if (userAgent.includes('Safari') && !userAgent.includes('CriOS')) {
+    console.log('Rejected: Safari browser detected');
+    return res.status(403).json({ error: 'Please use Google Chrome, not Safari' });
   }
   if (!rollNumber || !qrToken || !fingerprint) {
     console.log('Rejected: Missing required fields');
