@@ -415,8 +415,8 @@ app.post('/scan/code', async (req, res) => {
                          !userAgent.includes('Brave/') && 
                          !userAgent.includes('OPR/') && 
                          !userAgent.includes('Firefox/') && 
-                         !userAgent.includes('Version/') 
-                        
+                         !userAgent.includes('Version/') && 
+                         !userAgent.match(/Safari\/[0-9.]+(?!\s*Mobile\s*Safari\/537.36$)/);
   const isIosChrome = userAgent.includes('CriOS/');
   if (!isAndroidChrome && !isIosChrome) {
     console.log('Rejected: Only Google Chrome on Android or iOS is allowed');
