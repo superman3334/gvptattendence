@@ -409,10 +409,17 @@ app.post('/scan/code', async (req, res) => {
   const userAgent = req.headers['user-agent'];
   console.log('Received /scan/code request:', { rollNumber, qrToken, fingerprint, userAgent });
   // Allow Chrome on Android (Chrome/ and Android) or Chrome on iOS (CriOS/)
-  const isAndroidChrome = userAgent.includes('Chrome/') && userAgent.includes('Android');
+  const isAndroidChrome = userAgent.includes('Chrome/') && 
+                         userAgent.includes('Android') && 
+                         !userAgent.includes('EdgA/') && 
+                         !userAgent.includes('Brave/') && 
+                         !userAgent.includes('OPR/') && 
+                         !userAgent.includes('Firefox/') && 
+                         !userAgent.includes('Version/') && 
+                         !userAgent.match(/Safari\/[0-9.]+$/);
   const isIosChrome = userAgent.includes('CriOS/');
   if (!isAndroidChrome && !isIosChrome) {
-    console.log('Rejected: Non-Chrome browser or unsupported platform');
+    console.log('Rejected: Only Google Chrome on Android or iOS is allowed');
     return res.status(403).json({ error: 'Please use Google Chrome on an Android or iOS device' });
   }
   if (!rollNumber || !qrToken || !fingerprint) {
