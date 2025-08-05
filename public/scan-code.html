@@ -635,14 +635,6 @@
       });
     }
 
-    function restrictToChrome() {
-      return new Promise(resolve => {
-        const userAgent = navigator.userAgent;
-        const isChrome = userAgent.includes('Chrome') || userAgent.includes('CriOS');
-        console.log('Browser:', userAgent, 'Is Chrome/CriOS:', isChrome);
-        resolve(isChrome);
-      });
-    }
 
     function setupZoomControls(video, canvas, videoTrack) {
       let scale = 1.0;
@@ -723,12 +715,7 @@
         document.getElementById('video').parentElement.classList.remove('camera-loading');
         return;
       }
-      if (!(await restrictToChrome())) {
-        showMessage('Please use Google Chrome.', true);
-        isScanning = false;
-        document.getElementById('video').parentElement.classList.remove('camera-loading');
-        return;
-      }
+
 
       try {
         const fp = await FingerprintJS.load();
