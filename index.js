@@ -406,65 +406,46 @@ app.get('/scan/code', (req, res) => {
 
 app.post('/scan/code', async (req, res) => {
   const { rollNumber, qrToken, fingerprint } = req.body;
-  const userAgent = req.headers['user-agent'] || '';
+  const userAgent = req.headers['user-agent'];
   console.log('Received /scan/code request:', { rollNumber, qrToken, fingerprint, userAgent });
+
 
   if (!rollNumber || !qrToken || !fingerprint) {
     console.log('Rejected: Missing required fields');
     return res.status(400).json({ error: 'Missing required fields' });
   }
-
   try {
-    // Pipeline Redis commands for slot validation and duplicate checks
-    const pipeline = redis.pipeline();
-    pipeline.get(`slot:${qrToken}:id`); // 1. GET slotId
-    pipeline.sismember(`slot:${qrToken}:rollNumbers`, rollNumber); // 2. SISMEMBER rollNumber
-    pipeline.sismember(`slot:${qrToken}:fingerprints`, fingerprint); // 3. SISMEMBER fingerprint
-    const [slotId, rollNumberExists, fingerprintExists] = await pipeline.exec();
-
-    console.log('Redis slotId and duplicate checks:', { qrToken, slotId, rollNumberExists, fingerprintExists });
-
+    const slotId = await redis.get(`slot:${qrToken}:id`);
+    console.log('Redis slotId lookup:', { qrToken, slotId });
     if (!slotId) {
       console.log('Rejected: Invalid or expired QR code (no slotId)');
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-
-    if (rollNumberExists) {
-      console.log('Rejected: Attendance already marked');
-      return res.status(400).json({ error: 'Attendance already marked' });
-    }
-
-    if (fingerprintExists) {
-      console.log('Rejected: Duplicate device detected');
-      return res.status(400).json({ error: 'Duplicate device detected' });
-    }
-
-    // Cache slot validation in Redis to reduce MongoDB queries
-    const slotCacheKey = `slot:${slotId}:details`;
-    let slot = await redis.get(slotCacheKey);
-    if (!slot) {
-      slot = await Slot.findOne({ _id: slotId, isActive: true }).lean();
-      if (slot) {
-        await redis.setex(slotCacheKey, 120, JSON.stringify(slot));
-      }
-    } else {
-      slot = JSON.parse(slot);
-    }
-
+    const slot = await Slot.findOne({ _id: slotId, isActive: true }).lean();
     console.log('Slot lookup:', { slotId, slot: slot ? { _id: slot._id, qrToken: slot.qrToken, expiresAt: slot.expiresAt } : null });
     if (!slot || slot.qrToken !== qrToken || slot.expiresAt < new Date()) {
       console.log('Rejected: Invalid or expired slot');
-      await redis.del(`slot:${qrToken}:id`); // Only delete QR token mapping
+      await redis.del(`slot:${slotId}:qrToken`, `slot:${qrToken}:id`, `slot:${slotId}:rollNumbers`, `slot:${slotId}:fingerprints`, `slot:${slotId}:pending`);
       return res.status(400).json({ error: 'Invalid or expired QR code' });
     }
-
     const student = await Student.findOne({ rollNumber }).lean();
     console.log('Student lookup:', { rollNumber, student: student ? { rollNumber: student.rollNumber, section: student.section, year: student.year } : null });
     if (!student || !slot.sections.includes(student.section) || student.year !== slot.year) {
       console.log('Rejected: Student validation failed');
       return res.status(400).json({ error: 'Student not found or not in selected section/year' });
     }
-
+    const rollNumberExists = await redis.sismember(`slot:${slotId}:rollNumbers`, rollNumber);
+    console.log('Roll number check:', { rollNumber, exists: rollNumberExists });
+    if (rollNumberExists) {
+      console.log('Rejected: Attendance already marked');
+      return res.status(400).json({ error: 'Attendance already marked' });
+    }
+    const fingerprintExists = await redis.sismember(`slot:${slotId}:fingerprints`, fingerprint);
+    console.log('Fingerprint check:', { fingerprint, exists: fingerprintExists });
+    if (fingerprintExists) {
+      console.log('Rejected: Duplicate device detected');
+      return res.status(400).json({ error: 'Duplicate device detected' });
+    }
     const attendanceRecord = {
       rollNumber,
       slotId,
@@ -473,14 +454,9 @@ app.post('/scan/code', async (req, res) => {
       fingerprint
     };
     console.log('Recording attendance:', attendanceRecord);
-
-    // Pipeline write operations
-    const writePipeline = redis.pipeline();
-    writePipeline.rpush(`slot:${slotId}:pending`, JSON.stringify(attendanceRecord)); // 1. RPUSH
-    writePipeline.sadd(`slot:${slotId}:rollNumbers`, rollNumber); // 2. SADD
-    writePipeline.sadd(`slot:${slotId}:fingerprints`, fingerprint); // 3. SADD
-    await writePipeline.exec();
-
+    await redis.rpush(`slot:${slotId}:pending`, JSON.stringify(attendanceRecord));
+    await redis.sadd(`slot:${slotId}:rollNumbers`, rollNumber);
+    await redis.sadd(`slot:${slotId}:fingerprints`, fingerprint);
     const redirectUrl = `/success.html?rollNumber=${encodeURIComponent(rollNumber)}&slotNumber=${encodeURIComponent(slot.slotNumber)}&year=${encodeURIComponent(student.year)}&sections=${encodeURIComponent(student.section)}&timestamp=${encodeURIComponent(attendanceRecord.timestamp)}`;
     console.log('Redirecting to:', redirectUrl);
     res.json({ message: 'Successfully marked present', redirect: redirectUrl });
@@ -489,6 +465,7 @@ app.post('/scan/code', async (req, res) => {
     res.status(500).json({ error: 'Failed to mark attendance: ' + err.message });
   }
 });
+
 app.post('/faculty/login', async (req, res) => {
   try {
     const { username, password } = req.body;
